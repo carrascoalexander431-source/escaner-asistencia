@@ -1,0 +1,120 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escáner de Asistencia QR</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      text-align: center;
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .card {
+      max-width: 420px;
+      margin: 20px auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    h2 { color: #1a73e8; margin-bottom: 20px; }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; }
+    #status {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 1rem;
+      background: #e8f0fe;
+      color: #1967d2;
+    }
+    .success { background-color: #d4edda !important; color: #155724 !important; }
+    iframe { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>📷 Lector de Asistencia QR</h2>
+    <div id="reader"></div>
+    <div id="status">Apunta la cámara al código QR o sube una imagen</div>
+  </div>
+
+  <!-- Formulario e iframe ocultos para asegurar el envío a Google Apps Script -->
+  <iframe name="hidden_iframe" id="hidden_iframe"></iframe>
+  <form id="qrForm" method="GET" target="hidden_iframe">
+    <input type="hidden" name="cedula" id="form_cedula">
+    <input type="hidden" name="nombre" id="form_nombre">
+    <input type="hidden" name="departamento" id="form_departamento">
+    <input type="hidden" name="cargo" id="form_cargo">
+    <input type="hidden" name="estado" value="Presente">
+  </form>
+
+  <script>
+    // =========================================================================
+    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
+    // =========================================================================
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
+
+    let escaneando = true;
+
+    function onScanSuccess(decodedText, decodedResult) {
+      if (!escaneando) return;
+      escaneando = false;
+
+      const statusDiv = document.getElementById("status");
+      statusDiv.className = "";
+      statusDiv.innerText = "⏳ Registrando asistencia para: " + decodedText + "...";
+
+      let cedulaVal = decodedText;
+      let nombreVal = "Empleado (" + decodedText + ")";
+      let dptoVal = "Oficina / Personal";
+      let cargoVal = "No Especificado";
+
+      try {
+        const obj = JSON.parse(decodedText);
+        if (obj.cedula) cedulaVal = obj.cedula;
+        if (obj.nombre) nombreVal = obj.nombre;
+        if (obj.departamento) dptoVal = obj.departamento;
+        if (obj.cargo) cargoVal = obj.cargo;
+      } catch(e) {
+        // Texto plano
+      }
+
+      // Rellenar el formulario oculto y enviarlo
+      const form = document.getElementById("qrForm");
+      form.action = WEB_APP_URL;
+      document.getElementById("form_cedula").value = cedulaVal;
+      document.getElementById("form_nombre").value = nombreVal;
+      document.getElementById("form_departamento").value = dptoVal;
+      document.getElementById("form_cargo").value = cargoVal;
+
+      form.submit();
+
+      // Mostrar confirmación
+      setTimeout(() => {
+        statusDiv.className = "success";
+        statusDiv.innerText = "✅ ¡Asistencia registrada y enviada a Telegram!";
+        
+        setTimeout(() => {
+          statusDiv.className = "";
+          statusDiv.innerText = "Apunta la cámara al código QR o sube una imagen";
+          escaneando = true;
+        }, 3000);
+      }, 500);
+    }
+
+    // Inicializar el lector
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+      fps: 10, 
+      qrbox: 250,
+      facingMode: "environment" // Fuerza el uso de la cámara trasera
+    });
+    html5QrcodeScanner.render(onScanSuccess);
+  </script>
+</body>
+</html>
