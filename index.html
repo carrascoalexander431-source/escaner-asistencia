@@ -202,32 +202,27 @@
       });
     }
 
-    // Inicializar el escáner usando la cámara trasera por defecto
-    function iniciarEscaner() {
-      const resultBox = document.getElementById("result-box");
-      resultBox.style.display = "none";
+    // Inicializar el escáner de forma compatible con cualquier dispositivo
+function iniciarEscaner() {
+  const resultBox = document.getElementById("result-box");
+  resultBox.style.display = "none";
 
-      html5QrcodeScanner = new Html5QrcodeScanner(
-        "reader",
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          facingMode: { exact: "environment" } // Prioriza la cámara trasera en teléfonos
-        },
-        /* verbose= */ false
-      );
+  // Si ya había una instancia activa, nos aseguramos de limpiarla
+  if (html5QrcodeScanner) {
+    html5QrcodeScanner.clear().catch(() => {});
+  }
 
-      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-    }
+  html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader",
+    {
+      fps: 10,
+      qrbox: { width: 250, height: 250 },
+      config: {
+        facingMode: "environment" // Pide la cámara trasera preferente, pero sin exigir "exact"
+      }
+    },
+    /* verbose= */ false
+  );
 
-    function onScanFailure(error) {
-      // Ignorar errores continuos de búsqueda de código en tiempo real
-    }
-
-    // Cargar el escáner una vez listo el navegador
-    document.addEventListener("DOMContentLoaded", () => {
-      iniciarEscaner();
-    });
-  </script>
-</body>
-</html>
+  html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+}
