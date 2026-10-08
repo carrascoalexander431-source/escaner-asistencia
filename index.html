@@ -50,6 +50,7 @@
       overflow: hidden;
       border: 2px dashed #cbd5e1;
       background: #f8fafc;
+      min-height: 250px;
     }
 
     #reader button {
@@ -96,10 +97,9 @@
     // ==========================================
     // CONFIGURACIÓN DE PARÁMETROS DEL SISTEMA
     // ==========================================
-    // ⚠️ LA CLAVE DEBE SER EXACTAMENTE LA MISMA QUE PONES EN EL GENERADOR DE QR
     const SECRET_KEY = "MiClaveSegura2026"; 
     const API_KEY = "MiClaveSuperSegura2026";    
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec"; // 👈 Tu URL de Google Apps Script
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec"; // 👈 Pegar tu URL desplegada de Apps Script
 
     let html5QrcodeScanner = null;
 
@@ -120,29 +120,25 @@
         html5QrcodeScanner.clear().catch(err => console.error(err));
       }
 
-      mostrarResultado("info", "🔑 Decodificando QR...");
+      mostrarResultado("info", "🔑 Decodificando código QR...");
 
       try {
-        // Limpieza previa del texto leído para prevenir saltos de línea o espacios invisibles
         const qrTextoLimpio = decodedText.trim();
-
-        // Intento de descifrado AES
         const bytes = CryptoJS.AES.decrypt(qrTextoLimpio, SECRET_KEY);
         const decryptedDataText = bytes.toString(CryptoJS.enc.Utf8);
 
         if (!decryptedDataText) {
-          throw new Error("Clave incorrecta o QR no cifrado.");
+          throw new Error("Clave de cifrado incorrecta o QR sin formato AES.");
         }
 
         const dataObj = JSON.parse(decryptedDataText);
+        const cedulaExtraida = dataObj.id || dataObj.cedula;
 
-        // Validar 'id' (del generador) u 'origen'
-        if (dataObj.origen !== "CUR_MAY_HAMILTON" || !dataObj.id) {
-          throw new Error("QR no pertenece a la institución.");
+        if (dataObj.origen !== "CUR_MAY_HAMILTON" || !cedulaExtraida) {
+          throw new Error("El código QR no pertenece a la institución.");
         }
 
-        // Si la validación es correcta
-        procesarMarcaje(dataObj.id);
+        procesarMarcaje(cedulaExtraida);
 
       } catch (error) {
         mostrarResultado("error", "❌ Error: " + error.message);
@@ -151,7 +147,7 @@
     }
 
     function procesarMarcaje(cedulaEmpleado) {
-      mostrarResultado("info", "⏳ Registrando asistencia...");
+      mostrarResultado("info", "⏳ Verificando cédula en la base de datos...");
 
       const payload = {
         apiKey: API_KEY,
@@ -161,18 +157,26 @@
 
       fetch(WEB_APP_URL, {
         method: "POST",
-        mode: "no-cors",
         headers: {
-          "Content-Type": "text/plain"
+          "Content-Type": "text/plain;charset=utf-8"
         },
         body: JSON.stringify(payload)
       })
-      .then(() => {
-        mostrarResultado("success", `✅ ¡Asistencia registrada para C.I. ${cedulaEmpleado}!`);
-        setTimeout(() => { iniciarEscaner(); }, 4000);
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "success") {
+          mostrarResultado("success", `✅ ¡Asistencia registrada para C.I. ${cedulaEmpleado}!`);
+          setTimeout(() => { iniciarEscaner(); }, 4000);
+        } else if (data.status === "not_found") {
+          mostrarResultado("error", `❌ La C.I. ${cedulaEmpleado} no existe en la base de datos. Acuda a RRHH.`);
+          setTimeout(() => { iniciarEscaner(); }, 5000);
+        } else {
+          mostrarResultado("error", `❌ Error: ${data.message}`);
+          setTimeout(() => { iniciarEscaner(); }, 4000);
+        }
       })
       .catch(err => {
-        mostrarResultado("error", "❌ Error de conexión al registrar asistencia.");
+        mostrarResultado("error", "❌ Error de conexión al servidor.");
         setTimeout(() => { iniciarEscaner(); }, 4000);
       });
     }
