@@ -51,9 +51,9 @@
       overflow: hidden;
       border: 2px dashed #cbd5e1;
       background: #f8fafc;
+      min-height: 250px;
     }
 
-    /* Ocultar botones predeterminados poco estéticos de la librería */
     #reader button {
       background-color: #2563eb;
       color: white;
@@ -109,10 +109,10 @@
     <h2>Control de Asistencia</h2>
     <p class="subtitle">Escanee el código QR de su carnet institucional</p>
 
-    <!-- Contenedor donde se dibuja el escáner de la cámara -->
+    <!-- Contenedor del escáner -->
     <div id="reader"></div>
 
-    <!-- Caja de mensajes y alertas -->
+    <!-- Caja de respuestas -->
     <div id="result-box"></div>
   </div>
 
@@ -120,13 +120,15 @@
     // ==========================================
     // CONFIGURACIÓN DE PARÁMETROS DEL SISTEMA
     // ==========================================
-    const SECRET_KEY = "MiClaveSegura2026"; // Clave AES-256 compartida con el generador QR
-    const API_KEY = "MiClaveSuperSegura2026";    // Clave compartida con Google Apps Script
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec"; // Reemplaza con la URL desplegada de Apps Script
+    const SECRET_KEY = "MiClaveSegura2026"; // Clave del QR cifrado
+    const API_KEY = "MiClaveSuperSegura2026";    // Clave para Google Apps Script
+    
+    // ⚠️ REEMPLAZA ESTA URL CON LA TUYA DE GOOGLE APPS SCRIPT:
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec"; 
 
     let html5QrcodeScanner = null;
 
-    // Mostrar mensajes dinámicos de estado en pantalla
+    // Función para mostrar alertas en pantalla
     function mostrarResultado(tipo, mensaje) {
       const resultBox = document.getElementById("result-box");
       resultBox.className = "";
@@ -139,38 +141,97 @@
       resultBox.innerText = mensaje;
     }
 
-    // Procesar lectura del código QR
+    // Procesar la lectura exitosa del QR
     function onScanSuccess(decodedText, decodedResult) {
-  if (html5QrcodeScanner) {
-    html5QrcodeScanner.clear().catch(err => console.error("Error al pausar escáner:", err));
-  }
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear().catch(err => console.error("Error al detener escáner:", err));
+      }
 
-  mostrarResultado("info", "🔑 Descifrando código QR...");
+      mostrarResultado("info", "🔑 Descifrando código QR...");
 
-  try {
-    // 1. Descifrar con AES-256 usando la clave compartida
-    const bytes = CryptoJS.AES.decrypt(decodedText, SECRET_KEY);
-    const decryptedDataText = bytes.toString(CryptoJS.enc.Utf8);
+      try {
+        // Descifrar con CryptoJS AES-256
+        const bytes = CryptoJS.AES.decrypt(decodedText, SECRET_KEY);
+        const decryptedDataText = bytes.toString(CryptoJS.enc.Utf8);
 
-    if (!decryptedDataText) {
-      throw new Error("Clave incorrecta o formato inválido.");
+        if (!decryptedDataText) {
+          throw new Error("Clave o formato incorrecto.");
+        }
+
+        const dataObj = JSON.parse(decryptedDataText);
+
+        // Acepta tanto 'id' (de tu generador) como 'cedula'
+        const cedulaExtraida = dataObj.id || dataObj.cedula;
+
+        if (dataObj.origen !== "CUR_MAY_HAMILTON" || !cedulaExtraida) {
+          throw new Error("Código QR no autorizado.");
+        }
+
+        procesarMarcaje(cedulaExtraida);
+
+      } catch (error) {
+        mostrarResultado("error", "❌ Error: Código QR inválido o no reconocido.");
+        setTimeout(() => { iniciarEscaner(); }, 4000);
+      }
     }
 
-    const dataObj = JSON.parse(decryptedDataText);
+    // Enviar marcaje hacia Apps Script
+    function procesarMarcaje(cedulaEmpleado) {
+      mostrarResultado("info", "⏳ Registrando asistencia en la base de datos...");
 
-    // 2. Extraer la cédula (Acepta 'id' o 'cedula' para evitar errores de compatibilidad)
-    const cedulaExtraida = dataObj.id || dataObj.cedula;
+      const payload = {
+        apiKey: API_KEY,
+        cedula: cedulaEmpleado,
+        timestamp: new Date().toISOString()
+      };
 
-    // 3. Validar origen y presencia del ID
-    if (dataObj.origen !== "CUR_MAY_HAMILTON" || !cedulaExtraida) {
-      throw new Error("Código QR no pertenece a la institución o está incompleto.");
+      fetch(WEB_APP_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "text/plain"
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(() => {
+        mostrarResultado("success", `✅ Registro enviado para C.I. ${cedulaEmpleado}`);
+        setTimeout(() => { iniciarEscaner(); }, 4000);
+      })
+      .catch(err => {
+        mostrarResultado("error", "❌ Error de conexión al registrar la asistencia.");
+        setTimeout(() => { iniciarEscaner(); }, 4000);
+      });
     }
 
-    // 4. Procesar el registro con la cédula obtenida
-    procesarMarcaje(cedulaExtraida);
+    function onScanFailure(error) {
+      // Ignorar lectura continua en blanco
+    }
 
-  } catch (error) {
-    mostrarResultado("error", "❌ Error: Código QR inválido o no reconocido.");
-    setTimeout(() => { iniciarEscaner(); }, 4000);
-  }
-}
+    // Iniciar escáner de cámara
+    function iniciarEscaner() {
+      const resultBox = document.getElementById("result-box");
+      resultBox.style.display = "none";
+
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear().catch(() => {});
+      }
+
+      html5QrcodeScanner = new Html5QrcodeScanner(
+        "reader",
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        /* verbose= */ false
+      );
+
+      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    }
+
+    // Arrancar la cámara automáticamente al cargar la página
+    document.addEventListener("DOMContentLoaded", () => {
+      iniciarEscaner();
+    });
+  </script>
+</body>
+</html>
