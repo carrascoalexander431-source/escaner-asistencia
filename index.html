@@ -141,88 +141,36 @@
 
     // Procesar lectura del código QR
     function onScanSuccess(decodedText, decodedResult) {
-      // Detener el escáner mientras procesamos la petición
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.clear().catch(err => console.error("Error al pausar escáner:", err));
-      }
-
-      mostrarResultado("info", "🔑 Descifrando código QR...");
-
-      try {
-        // Descifrado con AES-256
-        const bytes = CryptoJS.AES.decrypt(decodedText, SECRET_KEY);
-        const decryptedDataText = bytes.toString(CryptoJS.enc.Utf8);
-
-        if (!decryptedDataText) {
-          throw new Error("Clave inválida o formato incorrecto.");
-        }
-
-        const dataObj = JSON.parse(decryptedDataText);
-
-        // Validación de cabecera/origen del QR
-        if (dataObj.origen !== "CUR_MAY_HAMILTON" || !dataObj.cedula) {
-          throw new Error("Código QR no autorizado o corrupto.");
-        }
-
-        // Si el QR es válido, enviamos la cédula al backend
-        procesarMarcaje(dataObj.cedula);
-
-      } catch (error) {
-        mostrarResultado("error", "❌ Error: Código QR inválido o no reconocido.");
-        setTimeout(() => { iniciarEscaner(); }, 4000);
-      }
-    }
-
-    // Envío de datos hacia Google Apps Script (Backend)
-    function procesarMarcaje(cedulaEmpleado) {
-      mostrarResultado("info", "⏳ Verificando credenciales en la base de datos...");
-
-      const payload = {
-        apiKey: API_KEY,
-        cedula: cedulaEmpleado,
-        timestamp: new Date().toISOString()
-      };
-
-      fetch(WEB_APP_URL, {
-        method: "POST",
-        mode: "no-cors", // Evita bloqueos de origen cruzado (CORS) desde GitHub Pages
-        headers: {
-          "Content-Type": "text/plain"
-        },
-        body: JSON.stringify(payload)
-      })
-      .then(() => {
-        // Al enviar con no-cors, la petición se completa y Apps Script procesa la validación/Telegram
-        mostrarResultado("success", `✅ Solicitud procesada para la C.I. ${cedulaEmpleado}`);
-        setTimeout(() => { iniciarEscaner(); }, 4000);
-      })
-      .catch(err => {
-        mostrarResultado("error", "❌ Error de conexión con el servidor.");
-        setTimeout(() => { iniciarEscaner(); }, 4000);
-      });
-    }
-
-    // Inicializar el escáner de forma compatible con cualquier dispositivo
-function iniciarEscaner() {
-  const resultBox = document.getElementById("result-box");
-  resultBox.style.display = "none";
-
-  // Si ya había una instancia activa, nos aseguramos de limpiarla
   if (html5QrcodeScanner) {
-    html5QrcodeScanner.clear().catch(() => {});
+    html5QrcodeScanner.clear().catch(err => console.error("Error al pausar escáner:", err));
   }
 
-  html5QrcodeScanner = new Html5QrcodeScanner(
-    "reader",
-    {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
-      config: {
-        facingMode: "environment" // Pide la cámara trasera preferente, pero sin exigir "exact"
-      }
-    },
-    /* verbose= */ false
-  );
+  mostrarResultado("info", "🔑 Descifrando código QR...");
 
-  html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+  try {
+    // 1. Descifrar con AES-256 usando la clave compartida
+    const bytes = CryptoJS.AES.decrypt(decodedText, SECRET_KEY);
+    const decryptedDataText = bytes.toString(CryptoJS.enc.Utf8);
+
+    if (!decryptedDataText) {
+      throw new Error("Clave incorrecta o formato inválido.");
+    }
+
+    const dataObj = JSON.parse(decryptedDataText);
+
+    // 2. Extraer la cédula (Acepta 'id' o 'cedula' para evitar errores de compatibilidad)
+    const cedulaExtraida = dataObj.id || dataObj.cedula;
+
+    // 3. Validar origen y presencia del ID
+    if (dataObj.origen !== "CUR_MAY_HAMILTON" || !cedulaExtraida) {
+      throw new Error("Código QR no pertenece a la institución o está incompleto.");
+    }
+
+    // 4. Procesar el registro con la cédula obtenida
+    procesarMarcaje(cedulaExtraida);
+
+  } catch (error) {
+    mostrarResultado("error", "❌ Error: Código QR inválido o no reconocido.");
+    setTimeout(() => { iniciarEscaner(); }, 4000);
+  }
 }
