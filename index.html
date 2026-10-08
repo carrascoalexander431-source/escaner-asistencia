@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -22,7 +22,7 @@
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     h2 { color: #1a73e8; margin-bottom: 20px; }
-    #reader { width: 100%; border-radius: 8px; overflow: hidden; }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; min-height: 250px; background: #eee; }
     #status {
       margin-top: 20px;
       padding: 12px;
@@ -32,6 +32,18 @@
       background: #e8f0fe;
       color: #1967d2;
     }
+    .btn-start {
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 15px;
+      width: 100%;
+    }
     .success { background-color: #d4edda !important; color: #155724 !important; }
     iframe { display: none; }
   </style>
@@ -40,11 +52,11 @@
 
   <div class="card">
     <h2>📷 Lector de Asistencia QR</h2>
+    <button id="startBtn" class="btn-start" onclick="iniciarCamara()">Activar Cámara</button>
     <div id="reader"></div>
-    <div id="status">Apunta la cámara al código QR o sube una imagen</div>
+    <div id="status">Haz clic en "Activar Cámara" para comenzar</div>
   </div>
 
-  <!-- Formulario e iframe ocultos para asegurar el envío a Google Apps Script -->
   <iframe name="hidden_iframe" id="hidden_iframe"></iframe>
   <form id="qrForm" method="GET" target="hidden_iframe">
     <input type="hidden" name="cedula" id="form_cedula">
@@ -55,12 +67,28 @@
   </form>
 
   <script>
-    // =========================================================================
-    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
-    // =========================================================================
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
 
     let escaneando = true;
+    let html5QrCode;
+
+    function iniciarCamara() {
+      document.getElementById("startBtn").style.display = "none";
+      document.getElementById("status").innerText = "Solicitando acceso a la cámara...";
+
+      html5QrCode = new Html5Qrcode("reader");
+      
+      const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+      html5QrCode.start(
+        { facingMode: "environment" }, 
+        config, 
+        onScanSuccess
+      ).catch(err => {
+        document.getElementById("status").innerText = "❌ Error al acceder a la cámara. Revisa los permisos.";
+        document.getElementById("startBtn").style.display = "block";
+      });
+    }
 
     function onScanSuccess(decodedText, decodedResult) {
       if (!escaneando) return;
@@ -85,7 +113,6 @@
         // Texto plano
       }
 
-      // Rellenar el formulario oculto y enviarlo
       const form = document.getElementById("qrForm");
       form.action = WEB_APP_URL;
       document.getElementById("form_cedula").value = cedulaVal;
@@ -95,26 +122,17 @@
 
       form.submit();
 
-      // Mostrar confirmación
       setTimeout(() => {
         statusDiv.className = "success";
-        statusDiv.innerText = "✅ ¡Asistencia registrada y enviada a Telegram!";
+        statusDiv.innerText = "✅ ¡Asistencia registrada!";
         
         setTimeout(() => {
           statusDiv.className = "";
-          statusDiv.innerText = "Apunta la cámara al código QR o sube una imagen";
+          statusDiv.innerText = "Apunta al código QR";
           escaneando = true;
         }, 3000);
       }, 500);
     }
-
-    // Inicializar el lector
-    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-      fps: 10, 
-      qrbox: 250,
-      facingMode: "environment" // Fuerza el uso de la cámara trasera
-    });
-    html5QrcodeScanner.render(onScanSuccess);
   </script>
 </body>
 </html>
