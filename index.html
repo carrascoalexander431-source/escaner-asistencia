@@ -30,12 +30,15 @@
   <div id="statusMessage" class="status" style="display:none;"></div>
 
 <script>
-  // 1. Clave secreta fija (Debe ser LA MISMA usada en el generador de QR)
-  const SECRET_KEY = "MiClaveSegura2026";
+  // 1. Claves de seguridad
+  const SECRET_KEY = "MiClaveSegura2026";      // Para desencriptar el QR
+  const API_KEY = "MiClaveSuperSegura2026";    // Para autenticar la petición hacia Google Apps Script
+
+  // 2. URL de tu Web App en Google Apps Script
+  const WEB_APP_URL = "https://script.google.com/macros/s/REEMPLAZA_CON_TU_SCRIPT_ID/exec"; 
 
   // Función principal cuando la cámara lee un QR
   async function onScanSuccess(decodedText, decodedResult) {
-    // Detener la cámara temporalmente
     html5QrcodeScanner.clear();
 
     try {
@@ -53,30 +56,12 @@
         throw new Error("El QR no pertenece a la institución.");
       }
 
-      /* =========================================================
-         B. VALIDACIÓN GPS DESACTIVADA TEMPORALMENTE PARA PRUEBAS
-         ========================================================= */
-      /*
-      mostrarResultado("info", "📍 Verificando ubicación GPS...");
-      const ubicacion = await obtenerUbicacion();
-      const distancia = calcularDistanciaKm(ubicacion.lat, ubicacion.lng, CENTRO_LAT, CENTRO_LNG);
-
-      if (distancia > RADIO_MAX_KM) {
-        const metrosFuera = Math.round((distancia - RADIO_MAX_KM) * 1000);
-        throw new Error(`Estás fuera del recinto universitario (a ${metrosFuera}m del límite).`);
-      }
-      */
-
-      // C. Verificación exitosa (Sin filtro GPS por ahora)
-      mostrarResultado("success", `✅ Empleado Validado: ID ${datosEmpleado.id}`);
-
-      // Enviar datos al backend (pasamos coordenadas dummy por ahora)
+      // B. Procesar y enviar la asistencia al servidor
       procesarMarcaje(datosEmpleado.id, { lat: 0, lng: 0 });
 
     } catch (err) {
       mostrarResultado("error", `❌ ${err.message || err}`);
       
-      // Reiniciar escáner después de 4 segundos si falla
       setTimeout(() => {
         iniciarEscaner();
       }, 4000);
@@ -91,21 +76,44 @@
   }
 
   function procesarMarcaje(cedulaEmpleado, ubicacion) {
-    console.log("Datos listos para enviar a Apps Script:", {
+    mostrarResultado("info", "⏳ Registrando asistencia en el sistema...");
+
+    const payload = {
+      apiKey: API_KEY,
       cedula: cedulaEmpleado,
-      lat: ubicacion.lat,
-      lng: ubicacion.lng
+      latitud: ubicacion ? ubicacion.lat : 0,
+      longitud: ubicacion ? ubicacion.lng : 0,
+      timestamp: new Date().toISOString()
+    };
+
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(() => {
+      mostrarResultado("success", `✅ ¡Asistencia registrada para C.I. ${cedulaEmpleado}!`);
+      
+      setTimeout(() => {
+        iniciarEscaner();
+      }, 3500);
+    })
+    .catch(err => {
+      mostrarResultado("error", "❌ Error de conexión al registrar la asistencia.");
+      setTimeout(() => {
+        iniciarEscaner();
+      }, 4000);
     });
   }
 
   function iniciarEscaner() {
     document.getElementById("statusMessage").style.display = "none";
-    html5QrcodeScanner.render(onScanSuccess, (error) => {
-      // Silenciar errores de lectura contínua
-    });
+    html5QrcodeScanner.render(onScanSuccess, (error) => {});
   }
 
-  // Inicializar escáner
   const html5QrcodeScanner = new Html5QrcodeScanner(
     "reader", 
     { fps: 10, qrbox: { width: 250, height: 250 } },
