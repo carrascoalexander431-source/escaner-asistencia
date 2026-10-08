@@ -3,136 +3,101 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Escáner de Asistencia QR</title>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <title>Escáner de Asistencia - Registro</title>
+  
+  <!-- Librería para lectura de cámara y QR -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Librería para descifrado AES-256 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      text-align: center;
-      background-color: #f0f2f5;
-      margin: 0;
-      padding: 20px;
-    }
-    .card {
-      max-width: 420px;
-      margin: 20px auto;
-      background: white;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    h2 { color: #1a73e8; margin-bottom: 20px; }
-    #reader { width: 100%; border-radius: 8px; overflow: hidden; min-height: 250px; background: #eee; }
-    #status {
-      margin-top: 20px;
-      padding: 12px;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 1rem;
-      background: #e8f0fe;
-      color: #1967d2;
-    }
-    .btn-start {
-      background-color: #1a73e8;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      font-size: 1rem;
-      font-weight: bold;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-bottom: 15px;
-      width: 100%;
-    }
-    .success { background-color: #d4edda !important; color: #155724 !important; }
-    iframe { display: none; }
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f6f9; }
+    #reader { width: 100%; max-width: 450px; margin: 0 auto; border: 2px solid #333; border-radius: 8px; overflow: hidden; }
+    .status { margin-top: 15px; padding: 12px; border-radius: 6px; font-weight: bold; max-width: 450px; margin-left: auto; margin-right: auto; }
+    .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h2>📷 Lector de Asistencia QR</h2>
-    <button id="startBtn" class="btn-start" onclick="iniciarCamara()">Activar Cámara</button>
-    <div id="reader"></div>
-    <div id="status">Haz clic en "Activar Cámara" para comenzar</div>
-  </div>
+  <h2>Escáner de Asistencia Institucional</h2>
+  
+  <!-- Contenedor del video de la cámara -->
+  <div id="reader"></div>
 
-  <iframe name="hidden_iframe" id="hidden_iframe"></iframe>
-  <form id="qrForm" method="GET" target="hidden_iframe">
-    <input type="hidden" name="cedula" id="form_cedula">
-    <input type="hidden" name="nombre" id="form_nombre">
-    <input type="hidden" name="departamento" id="form_departamento">
-    <input type="hidden" name="cargo" id="form_cargo">
-    <input type="hidden" name="estado" value="Presente">
-  </form>
+  <!-- Estado o mensaje de resultado -->
+  <div id="statusMessage" class="status" style="display:none;"></div>
 
-  <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
+<script>
+  // Clave secreta fija (Debe ser LA MISMA usada en el generador de QR)
+  const SECRET_KEY = "MiClaveSegura2026";
 
-    let escaneando = true;
-    let html5QrCode;
+  // Función que se ejecuta cuando la cámara detecta un QR
+  function onScanSuccess(decodedText, decodedResult) {
+    // Pausar o detener temporalmente el escáner para evitar lecturas dobles
+    html5QrcodeScanner.clear();
 
-    function iniciarCamara() {
-      document.getElementById("startBtn").style.display = "none";
-      document.getElementById("status").innerText = "Solicitando acceso a la cámara...";
+    try {
+      // 1. Intentar descifrar el contenido del QR con AES-256
+      const bytes = CryptoJS.AES.decrypt(decodedText, SECRET_KEY);
+      const textoDescifrado = bytes.toString(CryptoJS.enc.Utf8);
 
-      html5QrCode = new Html5Qrcode("reader");
-      
-      const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-      html5QrCode.start(
-        { facingMode: "environment" }, 
-        config, 
-        onScanSuccess
-      ).catch(err => {
-        document.getElementById("status").innerText = "❌ Error al acceder a la cámara. Revisa los permisos.";
-        document.getElementById("startBtn").style.display = "block";
-      });
-    }
-
-    function onScanSuccess(decodedText, decodedResult) {
-      if (!escaneando) return;
-      escaneando = false;
-
-      const statusDiv = document.getElementById("status");
-      statusDiv.className = "";
-      statusDiv.innerText = "⏳ Registrando asistencia para: " + decodedText + "...";
-
-      let cedulaVal = decodedText;
-      let nombreVal = "Empleado (" + decodedText + ")";
-      let dptoVal = "Oficina / Personal";
-      let cargoVal = "No Especificado";
-
-      try {
-        const obj = JSON.parse(decodedText);
-        if (obj.cedula) cedulaVal = obj.cedula;
-        if (obj.nombre) nombreVal = obj.nombre;
-        if (obj.departamento) dptoVal = obj.departamento;
-        if (obj.cargo) cargoVal = obj.cargo;
-      } catch(e) {
-        // Texto plano
+      if (!textoDescifrado) {
+        throw new Error("Clave inválida o QR alterado");
       }
 
-      const form = document.getElementById("qrForm");
-      form.action = WEB_APP_URL;
-      document.getElementById("form_cedula").value = cedulaVal;
-      document.getElementById("form_nombre").value = nombreVal;
-      document.getElementById("form_departamento").value = dptoVal;
-      document.getElementById("form_cargo").value = cargoVal;
+      // 2. Convertir la cadena descifrada a un objeto JSON
+      const datosEmpleado = JSON.parse(textoDescifrado);
 
-      form.submit();
+      // 3. Validar origen / sello institucional
+      if (datosEmpleado.origen !== "CUR_MAY_HAMILTON") {
+        throw new Error("Código QR no pertenece a la institución");
+      }
 
+      // ¡Lectura exitosa y verificada!
+      mostrarResultado("success", `✅ Empleado Validado: ID ${datosEmpleado.id}`);
+      
+      // Aquí enviarás los datos al backend (Siguiente paso: Apps Script / API)
+      procesarMarcaje(datosEmpleado.id);
+
+    } catch (err) {
+      mostrarResultado("error", "❌ Código QR FALSO o Inválido. Acceso denegado.");
+      
+      // Reactivar la cámara después de 3 segundos
       setTimeout(() => {
-        statusDiv.className = "success";
-        statusDiv.innerText = "✅ ¡Asistencia registrada!";
-        
-        setTimeout(() => {
-          statusDiv.className = "";
-          statusDiv.innerText = "Apunta al código QR";
-          escaneando = true;
-        }, 3000);
-      }, 500);
+        iniciarEscaner();
+      }, 3000);
     }
-  </script>
+  }
+
+  function mostrarResultado(tipo, mensaje) {
+    const el = document.getElementById("statusMessage");
+    el.className = `status ${tipo}`;
+    el.innerText = mensaje;
+    el.style.display = "block";
+  }
+
+  function procesarMarcaje(cedulaEmpleado) {
+    console.log("Enviando registro de:", cedulaEmpleado);
+    // Aquí conectaremos la función con Google Apps Script más adelante
+  }
+
+  function iniciarEscaner() {
+    document.getElementById("statusMessage").style.display = "none";
+    html5QrcodeScanner.render(onScanSuccess, (error) => {
+      // Errores menores de enfoque/cuadro se ignoran silenciosamente
+    });
+  }
+
+  // Inicializar el escáner al cargar la página
+  const html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader", 
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    /* verbose= */ false
+  );
+
+  iniciarEscaner();
+</script>
+
 </body>
 </html>
