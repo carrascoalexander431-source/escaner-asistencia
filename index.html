@@ -68,60 +68,39 @@
     }
   }
 
-  function mostrarResultado(tipo, mensaje) {
-    const el = document.getElementById("statusMessage");
-    el.className = `status ${tipo}`;
-    el.innerText = mensaje;
-    el.style.display = "block";
-  }
+function procesarMarcaje(cedulaEmpleado, ubicacion) {
+  mostrarResultado("info", "⏳ Verificando credenciales en el sistema...");
 
-  function procesarMarcaje(cedulaEmpleado, ubicacion) {
-    mostrarResultado("info", "⏳ Registrando asistencia en el sistema...");
+  const payload = {
+    apiKey: API_KEY,
+    cedula: cedulaEmpleado,
+    latitud: ubicacion ? ubicacion.lat : 0,
+    longitud: ubicacion ? ubicacion.lng : 0,
+    timestamp: new Date().toISOString()
+  };
 
-    const payload = {
-      apiKey: API_KEY,
-      cedula: cedulaEmpleado,
-      latitud: ubicacion ? ubicacion.lat : 0,
-      longitud: ubicacion ? ubicacion.lng : 0,
-      timestamp: new Date().toISOString()
-    };
-
-    fetch(WEB_APP_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    })
-    .then(() => {
+  fetch(WEB_APP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8" // Permite recibir la respuesta JSON desde Apps Script
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.status === "success") {
       mostrarResultado("success", `✅ ¡Asistencia registrada para C.I. ${cedulaEmpleado}!`);
-      
-      setTimeout(() => {
-        iniciarEscaner();
-      }, 3500);
-    })
-    .catch(err => {
-      mostrarResultado("error", "❌ Error de conexión al registrar la asistencia.");
-      setTimeout(() => {
-        iniciarEscaner();
-      }, 4000);
-    });
-  }
-
-  function iniciarEscaner() {
-    document.getElementById("statusMessage").style.display = "none";
-    html5QrcodeScanner.render(onScanSuccess, (error) => {});
-  }
-
-  const html5QrcodeScanner = new Html5QrcodeScanner(
-    "reader", 
-    { fps: 10, qrbox: { width: 250, height: 250 } },
-    false
-  );
-
-  iniciarEscaner();
-</script>
-
-</body>
-</html>
+      setTimeout(() => { iniciarEscaner(); }, 3500);
+    } else if (data.status === "not_found") {
+      mostrarResultado("error", `❌ C.I. ${cedulaEmpleado} no registrada. Por favor acuda a RRHH.`);
+      setTimeout(() => { iniciarEscaner(); }, 5000);
+    } else {
+      mostrarResultado("error", `❌ Error: ${data.message}`);
+      setTimeout(() => { iniciarEscaner(); }, 4000);
+    }
+  })
+  .catch(err => {
+    mostrarResultado("error", "❌ Error de conexión con el servidor.");
+    setTimeout(() => { iniciarEscaner(); }, 4000);
+  });
+}
