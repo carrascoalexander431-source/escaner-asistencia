@@ -91,15 +91,16 @@
 
 <script>
   const API_KEY = "MiClaveSuperSegura2026";
-  const SECRET_KEY_DEF = "MiClaveSegura2026";
+  const SECRET_KEY_DEF = "MiClaveSegura2026"; // Clave por defecto de respaldo
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
-  const LOGO_URL = "https://raw.githubusercontent.com/TU_USUARIO/TU_REPOSITO/main/logo.png";
+  const LOGO_URL = "https://raw.githubusercontent.com/TU_USUARIO/TU_REPOSITO/main/logo.png"; // Reemplaza con tu ruta Raw de GitHub
 
-  // Verificar sesión al cargar
+  // Verificar sesión activa
   if (!sessionStorage.getItem("session_token")) {
     window.location.href = "login.html";
   } else {
-    document.getElementById("userDisplay").innerText = "👤 Usuario: " + sessionStorage.getItem("session_user");
+    const user = sessionStorage.getItem("session_user") || "Usuario";
+    document.getElementById("userDisplay").innerText = "👤 " + user;
   }
 
   function cerrarSesion() {
@@ -114,34 +115,71 @@
     event.currentTarget.classList.add('active');
   }
 
-  // Generador de QR
+  // GENERADOR DE QR CORREGIDO
   function generarQR() {
     const cedula = document.getElementById("cedula").value.trim();
-    const key = document.getElementById("secretKey").value.trim();
+    let key = document.getElementById("secretKey").value.trim();
     const container = document.getElementById("qrcode");
 
-    if (!cedula || !key) {
-      alert("Ingrese cédula y clave maestra.");
+    if (!cedula) {
+      alert("Por favor ingrese la cédula o ID del empleado.");
       return;
     }
 
-    container.innerHTML = "";
-    const payload = JSON.stringify({ id: cedula, origen: "CUR_MAY_HAMILTON" });
-    const cifrado = CryptoJS.AES.encrypt(payload, key).toString();
+    // Si el usuario deja la clave en blanco, usa la clave maestra por defecto
+    if (!key) {
+      key = SECRET_KEY_DEF;
+    }
 
-    new QRCode(container, {
-      text: cifrado,
-      width: 200,
-      height: 200,
-      correctLevel: QRCode.CorrectLevel.H,
-      logo: LOGO_URL,
-      logoWidth: 45,
-      logoHeight: 45,
-      logoBackgroundColor: '#ffffff'
-    });
+    // Limpiar contenedor previo
+    container.innerHTML = "";
+
+    try {
+      // 1. Preparar datos y cifrar en AES
+      const payload = JSON.stringify({ id: cedula, origen: "CUR_MAY_HAMILTON" });
+      const cifrado = CryptoJS.AES.encrypt(payload, key).toString();
+
+      // 2. Generar el código QR
+      new QRCode(container, {
+        text: cifrado,
+        width: 220,
+        height: 220,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H,
+        logo: LOGO_URL,
+        logoWidth: 50,
+        logoHeight: 50,
+        logoBackgroundColor: '#ffffff',
+        logoBackgroundTransparent: false
+      });
+
+      // 3. Registrar en la Bitácora de Google Sheets
+      registrarBitacoraQR(cedula);
+
+    } catch (err) {
+      console.error("Error al generar QR:", err);
+      alert("Error al generar el código QR. Verifique las librerías cargadas.");
+    }
   }
 
-  // Consulta de Personal
+  // Registrar auditoría de quién generó el QR
+  function registrarBitacoraQR(cedulaGenerada) {
+    const usuarioActual = sessionStorage.getItem("session_user") || "Desconocido";
+
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "registrarGeneracionQR",
+        usuario: usuarioActual,
+        rol: "Administrador",
+        cedulaGenerada: cedulaGenerada
+      })
+    }).catch(e => console.log("Error al guardar bitácora:", e));
+  }
+
+  // CONSULTA DE PERSONAL
   let datosPersonal = [];
 
   function cargarPersonal() {
@@ -158,7 +196,8 @@
       } else {
         alert("Error al obtener datos: " + res.message);
       }
-    });
+    })
+    .catch(err => alert("Error al conectar con la base de datos."));
   }
 
   function renderTabla(lista) {
@@ -191,6 +230,3 @@
     renderTabla(filtrados);
   }
 </script>
-
-</body>
-</html>
