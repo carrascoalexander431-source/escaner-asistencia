@@ -99,7 +99,7 @@
     // ==========================================
     const SECRET_KEY = "MiClaveSegura2026"; 
     const API_KEY = "MiClaveSuperSegura2026";    
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec"; // 👈 Pegar tu URL desplegada de Apps Script
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
 
     let html5QrcodeScanner = null;
 
@@ -124,24 +124,31 @@
 
       try {
         const qrTextoLimpio = decodedText.trim();
-        const bytes = CryptoJS.AES.decrypt(qrTextoLimpio, SECRET_KEY);
-        const decryptedDataText = bytes.toString(CryptoJS.enc.Utf8);
+        let decryptedDataText = "";
+
+        // Intentar desencriptar atrapando errores de codificación UTF-8
+        try {
+          const bytes = CryptoJS.AES.decrypt(qrTextoLimpio, SECRET_KEY);
+          decryptedDataText = bytes.toString(CryptoJS.enc.Utf8);
+        } catch (e) {
+          throw new Error("El código QR no es válido o fue generado con otra clave secreta.");
+        }
 
         if (!decryptedDataText) {
-          throw new Error("Clave de cifrado incorrecta o QR sin formato AES.");
+          throw new Error("El código QR no es válido o fue generado con otra clave secreta.");
         }
 
         const dataObj = JSON.parse(decryptedDataText);
         const cedulaExtraida = dataObj.id || dataObj.cedula;
 
         if (dataObj.origen !== "CUR_MAY_HAMILTON" || !cedulaExtraida) {
-          throw new Error("El código QR no pertenece a la institución.");
+          throw new Error("El código QR no pertenece a esta institución.");
         }
 
         procesarMarcaje(cedulaExtraida);
 
       } catch (error) {
-        mostrarResultado("error", "❌ Error: " + error.message);
+        mostrarResultado("error", "❌ " + error.message);
         setTimeout(() => { iniciarEscaner(); }, 4000);
       }
     }
