@@ -115,118 +115,52 @@
     event.currentTarget.classList.add('active');
   }
 
-  // GENERADOR DE QR CORREGIDO
-  function generarQR() {
-    const cedula = document.getElementById("cedula").value.trim();
-    let key = document.getElementById("secretKey").value.trim();
-    const container = document.getElementById("qrcode");
+// GENERADOR DE QR DIRECTO (SIN LOGO)
+function generarQR() {
+  const cedula = document.getElementById("cedula").value.trim();
+  let key = document.getElementById("secretKey").value.trim();
+  const container = document.getElementById("qrcode");
 
-    if (!cedula) {
-      alert("Por favor ingrese la cédula o ID del empleado.");
-      return;
-    }
-
-    // Si el usuario deja la clave en blanco, usa la clave maestra por defecto
-    if (!key) {
-      key = SECRET_KEY_DEF;
-    }
-
-    // Limpiar contenedor previo
-    container.innerHTML = "";
-
-    try {
-      // 1. Preparar datos y cifrar en AES
-      const payload = JSON.stringify({ id: cedula, origen: "CUR_MAY_HAMILTON" });
-      const cifrado = CryptoJS.AES.encrypt(payload, key).toString();
-
-      // 2. Generar el código QR
-      new QRCode(container, {
-        text: cifrado,
-        width: 220,
-        height: 220,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H,
-        logo: LOGO_URL,
-        logoWidth: 50,
-        logoHeight: 50,
-        logoBackgroundColor: '#ffffff',
-        logoBackgroundTransparent: false
-      });
-
-      // 3. Registrar en la Bitácora de Google Sheets
-      registrarBitacoraQR(cedula);
-
-    } catch (err) {
-      console.error("Error al generar QR:", err);
-      alert("Error al generar el código QR. Verifique las librerías cargadas.");
-    }
+  if (!cedula) {
+    alert("Por favor ingrese la cédula o ID del empleado.");
+    return;
   }
 
-  // Registrar auditoría de quién generó el QR
-  function registrarBitacoraQR(cedulaGenerada) {
-    const usuarioActual = sessionStorage.getItem("session_user") || "Desconocido";
-
-    fetch(WEB_APP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        action: "registrarGeneracionQR",
-        usuario: usuarioActual,
-        rol: "Administrador",
-        cedulaGenerada: cedulaGenerada
-      })
-    }).catch(e => console.log("Error al guardar bitácora:", e));
+  // Si no se introduce clave en el campo, usa la clave por defecto
+  if (!key) {
+    key = SECRET_KEY_DEF;
   }
 
-  // CONSULTA DE PERSONAL
-  let datosPersonal = [];
+  // Limpiar el contenedor antes de dibujar
+  container.innerHTML = "";
 
-  function cargarPersonal() {
-    fetch(WEB_APP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "consultarPersonal", apiKey: API_KEY })
-    })
-    .then(res => res.json())
-    .then(res => {
-      if (res.status === "success") {
-        datosPersonal = res.data;
-        renderTabla(datosPersonal);
-      } else {
-        alert("Error al obtener datos: " + res.message);
-      }
-    })
-    .catch(err => alert("Error al conectar con la base de datos."));
-  }
-
-  function renderTabla(lista) {
-    const tbody = document.querySelector("#tablaPersonal tbody");
-    tbody.innerHTML = "";
-
-    if (lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No se encontraron registros.</td></tr>';
-      return;
-    }
-
-    lista.forEach(p => {
-      tbody.innerHTML += `<tr>
-        <td><b>${p.cedula}</b></td>
-        <td>${p.nombre}</td>
-        <td>${p.departamento}</td>
-        <td>${p.cargo}</td>
-      </tr>`;
+  try {
+    // 1. Crear el JSON con los datos del carnet
+    const payload = JSON.stringify({ 
+      id: cedula, 
+      origen: "CUR_MAY_HAMILTON" 
     });
-  }
 
-  function filtrarTabla() {
-    const q = document.getElementById("buscarInput").value.toLowerCase();
-    const filtrados = datosPersonal.filter(p => 
-      p.cedula.toLowerCase().includes(q) ||
-      p.nombre.toLowerCase().includes(q) ||
-      p.departamento.toLowerCase().includes(q) ||
-      p.cargo.toLowerCase().includes(q)
-    );
-    renderTabla(filtrados);
+    // 2. Cifrar los datos usando CryptoJS
+    const cifrado = CryptoJS.AES.encrypt(payload, key).toString();
+
+    // 3. Renderizar el QR limpio directamente en pantalla
+    new QRCode(container, {
+      text: cifrado,
+      width: 220,
+      height: 220,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    // 4. Auditoría opcional en la bitácora
+    if (typeof registrarBitacoraQR === "function") {
+      registrarBitacoraQR(cedula);
+    }
+
+  } catch (err) {
+    console.error("Error al generar QR:", err);
+    alert("Error al generar el código QR. Verifique que las librerías carguen correctamente.");
   }
-</script>
+}
