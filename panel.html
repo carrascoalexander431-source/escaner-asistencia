@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel de Control - CUR May Hamilton</title>
 
-  <!-- Librerías JS garantizadas via CDN -->
+  <!-- Librerías JS para Cifrado y Generación de QR -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -76,15 +76,17 @@
 
 <div class="container">
 
-  <!-- MÓDULO 1: GENERADOR DE QR -->
+  <!-- MÓDULO 1: GENERADOR DE QR (SIMPLIFICADO) -->
   <div id="generador" class="tab-content active">
     <h2>Generador de QR Cifrado</h2>
     <hr style="margin: 15px 0;">
+    
     <div class="form-group">
       <label for="cedula">Cédula / ID de Empleado:</label>
       <input type="text" id="cedula" placeholder="Ej: V-12345678" style="width:100%;">
     </div>
-        <button class="btn-primary" onclick="generarQREmergente()">Generar Código QR</button>
+
+    <button class="btn-primary" onclick="generarQREmergente()">Generar Código QR</button>
   </div>
 
   <!-- MÓDULO 2: CONSULTA DE PERSONAL -->
@@ -130,7 +132,7 @@
   const SECRET_KEY_DEF = "MiClaveSegura2026";
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
 
-  // Verificar sesión al cargar
+  // Control de sesión al cargar la página
   window.onload = function() {
     if (!sessionStorage.getItem("session_token")) {
       window.location.href = "login.html";
@@ -154,10 +156,9 @@
     if (tabId === 'consulta') document.getElementById('btnTabCon').classList.add('active');
   }
 
-  // FUNCIÓN PRINCIPAL PARA GENERAR QR EN MODAL
+  // GENERACIÓN DE QR AUTOMÁTICA CON CLAVE MAESTRA
   function generarQREmergente() {
     const cedulaInput = document.getElementById("cedula");
-    const keyInput = document.getElementById("secretKey");
     const qrContainer = document.getElementById("qrcodeContainer");
 
     if (!cedulaInput || !cedulaInput.value.trim()) {
@@ -166,23 +167,20 @@
     }
 
     const cedula = cedulaInput.value.trim();
-    const key = keyInput && keyInput.value.trim() ? keyInput.value.trim() : SECRET_KEY_DEF;
 
-    // Verificar si la librería QRCode existe
     if (typeof QRCode === "undefined") {
-      alert("Error: La librería de generación QR no cargó correctamente.");
+      alert("Error: La librería QRCode no se ha cargado correctamente.");
       return;
     }
 
-    // Limpiar contenedor previo
     qrContainer.innerHTML = "";
 
     try {
-      // 1. Cifrar los datos
+      // 1. Cifrar con la constante secreta institucional
       const payload = JSON.stringify({ id: cedula, origen: "CUR_MAY_HAMILTON" });
-      const cifrado = CryptoJS.AES.encrypt(payload, key).toString();
+      const cifrado = CryptoJS.AES.encrypt(payload, SECRET_KEY_DEF).toString();
 
-      // 2. Renderizar QR
+      // 2. Renderizar el QR
       new QRCode(qrContainer, {
         text: cifrado,
         width: 200,
@@ -192,12 +190,14 @@
         correctLevel: QRCode.CorrectLevel.M
       });
 
-      // 3. Mostrar Modal
+      // 3. Desplegar la ventana emergente
       document.getElementById("modalCedulaText").innerText = "Cédula: " + cedula;
       document.getElementById("qrModal").style.display = "flex";
 
-      // 4. Bitácora
-      registrarBitacoraQR(cedula);
+      // 4. Registrar la acción en la bitácora de Google Sheets
+      if (typeof registrarBitacoraQR === "function") {
+        registrarBitacoraQR(cedula);
+      }
 
     } catch (err) {
       alert("Error al procesar el código QR: " + err.message);
