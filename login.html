@@ -3,83 +3,209 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Acceso al Sistema - CUR May Hamilton</title>
+  <title>Iniciar Sesión - CUR May Hamilton</title>
+  
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-    body { background: #f1f5f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .login-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 380px; text-align: center; }
-    .logo { max-width: 100px; margin-bottom: 15px; }
-    h2 { color: #0f172a; margin-bottom: 20px; font-size: 1.3rem; }
-    .input-group { text-align: left; margin-bottom: 15px; }
-    label { font-size: 0.85rem; font-weight: 600; color: #475569; display: block; margin-bottom: 5px; }
-    input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; }
-    button { width: 100%; padding: 11px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    button:hover { background: #1d4ed8; }
-    #msg { margin-top: 15px; font-size: 0.85rem; font-weight: 600; display: none; }
-    .error { color: #dc2626; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: #f1f5f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: #ffffff;
+      padding: 35px 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    /* ESTILO PARA EL LOGO INSTITUCIONAL */
+    .logo-img {
+      width: 120px;
+      height: auto;
+      margin: 0 auto 15px auto;
+      display: block;
+      object-fit: contain;
+    }
+
+    h2 {
+      color: #0f172a;
+      margin-bottom: 4px;
+      font-size: 1.35rem;
+    }
+
+    p.subtitle {
+      color: #64748b;
+      font-size: 0.85rem;
+      margin-bottom: 25px;
+      line-height: 1.3;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+      text-align: left;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      transition: border-color 0.2s ease;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.95rem;
+      margin-top: 10px;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    #msgBox {
+      margin-top: 18px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: none;
+      word-break: break-word;
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+
+    .info {
+      background: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+    }
+
+    .success {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
   </style>
 </head>
 <body>
 
-<div class="login-card">
-  <img src="https://raw.githubusercontent.com/TU_USUARIO/TU_REPOSITO/main/logo.png" alt="Logo" class="logo" onerror="this.style.display='none'">
-  <h2>Acceso Administrativo</h2>
+  <div class="login-card">
+    <!-- LOGO INSTITUCIONAL -->
+    <img src="logo.png" alt="Logo CUR May Hamilton" class="logo-img">
 
-  <div class="input-group">
-    <label>Usuario:</label>
-    <input type="text" id="userInput" placeholder="Ej: admin">
+    <h2>Control de Asistencia</h2>
+    <p class="subtitle">Colegio Universitario de Rehabilitación "May Hamilton"</p>
+
+    <div class="form-group">
+      <label for="usuario">Usuario:</label>
+      <input type="text" id="usuario" placeholder="Ingrese su usuario" autocomplete="username">
+    </div>
+
+    <div class="form-group">
+      <label for="password">Contraseña:</label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" onkeypress="detectarEnter(event)">
+    </div>
+
+    <button onclick="iniciarSesion()">Ingresar al Sistema</button>
+
+    <div id="msgBox"></div>
   </div>
 
-  <div class="input-group">
-    <label>Contraseña:</label>
-    <input type="password" id="passInput" placeholder="••••••••">
-  </div>
+  <script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
 
-  <button onclick="iniciarSesion()">Ingresar al Sistema</button>
-  <div id="msg"></div>
-</div>
-
-<script>
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
-
-  function iniciarSesion() {
-    const user = document.getElementById("userInput").value.trim();
-    const pass = document.getElementById("passInput").value.trim();
-    const msg = document.getElementById("msg");
-
-    if (!user || !pass) {
-      msg.className = "error";
-      msg.style.display = "block";
-      msg.innerText = "Por favor ingresa usuario y contraseña.";
-      return;
+    function mostrarMsg(tipo, texto) {
+      const box = document.getElementById("msgBox");
+      box.className = tipo;
+      box.innerText = texto;
+      box.style.display = "block";
     }
 
-    msg.style.display = "block";
-    msg.className = "";
-    msg.innerText = "Validando credenciales...";
-
-    fetch(WEB_APP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "login", username: user, password: pass })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.status === "success") {
-        sessionStorage.setItem("session_token", data.token);
-        sessionStorage.setItem("session_user", data.user);
-        window.location.href = "panel.html";
-      } else {
-        msg.className = "error";
-        msg.innerText = "❌ " + data.message;
+    function detectarEnter(e) {
+      if (e.key === "Enter") {
+        iniciarSesion();
       }
-    })
-    .catch(err => {
-      msg.className = "error";
-      msg.innerText = "❌ Error de conexión al verificar credenciales.";
-    });
-  }
-</script>
+    }
+
+    function iniciarSesion() {
+      const u = document.getElementById("usuario").value.trim();
+      const p = document.getElementById("password").value.trim();
+
+      if (!u || !p) {
+        mostrarMsg("error", "Por favor complete todos los campos.");
+        return;
+      }
+
+      mostrarMsg("info", "⏳ Validando credenciales...");
+
+      fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "login", usuario: u, password: p })
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === "success") {
+          sessionStorage.setItem("session_token", res.token);
+          sessionStorage.setItem("session_user", res.usuario);
+          sessionStorage.setItem("session_role", res.rol);
+          
+          mostrarMsg("success", "✅ ¡Acceso concedido! Redirigiendo...");
+          setTimeout(() => {
+            window.location.href = "panel.html";
+          }, 1000);
+        } else {
+          mostrarMsg("error", "❌ " + (res.message || "Usuario o contraseña incorrectos."));
+        }
+      })
+      .catch(err => {
+        console.error("Error Login:", err);
+        mostrarMsg("error", "❌ Error de conexión con el servidor.");
+      });
+    }
+  </script>
 
 </body>
 </html>
