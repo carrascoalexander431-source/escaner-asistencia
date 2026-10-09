@@ -139,50 +139,37 @@
   const SECRET_KEY_DEF = "MiClaveSegura2026";
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
 
-  // Control de sesión
-  if (!sessionStorage.getItem("session_token")) {
-    window.location.href = "login.html";
-  } else {
-    const user = sessionStorage.getItem("session_user") || "Usuario";
-    document.getElementById("userDisplay").innerText = "👤 " + user;
-  }
+  // ... (aquí mantienes tus funciones de control de sesión y cambiarTab) ...
 
-  function cerrarSesion() {
-    sessionStorage.clear();
-    window.location.href = "login.html";
-  }
-
-  function cambiarTab(tabId, evt) {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    evt.currentTarget.classList.add('active');
-  }
-
-  // FUNCIÓN PARA GENERAR QR EN VENTANA EMERGENTE
+  // REEMPLAZA O AGREGA ESTA FUNCIÓN AQUÍ:
   function generarQREmergente() {
-    const cedula = document.getElementById("cedula").value.trim();
-    let key = document.getElementById("secretKey").value.trim();
+    const cedulaInput = document.getElementById("cedula");
+    const keyInput = document.getElementById("secretKey");
     const qrContainer = document.getElementById("qrcodeContainer");
 
-    if (!cedula) {
-      alert("Por favor ingrese la cédula o ID del empleado.");
+    if (!cedulaInput || !cedulaInput.value.trim()) {
+      alert("Por favor ingrese la cédula.");
       return;
     }
 
-    if (!key) {
-      key = SECRET_KEY_DEF;
+    const cedula = cedulaInput.value.trim();
+    const key = keyInput && keyInput.value.trim() ? keyInput.value.trim() : SECRET_KEY_DEF;
+
+    // Verificar si la librería QRCode está cargada en el navegador
+    if (typeof QRCode === "undefined") {
+      alert("Error: La librería QRCode.js no se ha cargado. Revisa tu conexión a internet o las etiquetas <script>.");
+      return;
     }
 
-    // Limpiar QR anterior
+    // Limpiar contenedor antes de renderizar
     qrContainer.innerHTML = "";
 
     try {
-      // 1. Cifrado AES
+      // 1. Cifrar los datos en AES
       const payload = JSON.stringify({ id: cedula, origen: "CUR_MAY_HAMILTON" });
       const cifrado = CryptoJS.AES.encrypt(payload, key).toString();
 
-      // 2. Generar QR usando la librería QRCode.js estándar
+      // 2. Generar el código QR
       new QRCode(qrContainer, {
         text: cifrado,
         width: 200,
@@ -192,89 +179,19 @@
         correctLevel: QRCode.CorrectLevel.H
       });
 
-      // 3. Mostrar la ventana emergente
+      // 3. Abrir la ventana emergente (modal)
       document.getElementById("modalCedulaText").innerText = "Cédula: " + cedula;
       document.getElementById("qrModal").style.display = "flex";
 
-      // 4. Guardar registro en la bitácora de Google Sheets
-      registrarBitacoraQR(cedula);
+      // 4. Auditoría en la bitácora
+      if (typeof registrarBitacoraQR === "function") {
+        registrarBitacoraQR(cedula);
+      }
 
     } catch (err) {
-      console.error(err);
-      alert("Error al generar el código QR. Asegúrese de tener conexión a Internet.");
+      alert("Error interno al cifrar o generar el QR: " + err.message);
     }
   }
 
-  function cerrarModal() {
-    document.getElementById("qrModal").style.display = "none";
-  }
-
-  function registrarBitacoraQR(cedulaGenerada) {
-    const usuarioActual = sessionStorage.getItem("session_user") || "Desconocido";
-
-    fetch(WEB_APP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        action: "registrarGeneracionQR",
-        usuario: usuarioActual,
-        rol: "Administrador",
-        cedulaGenerada: cedulaGenerada
-      })
-    }).catch(e => console.log("Bitácora diferida:", e));
-  }
-
-  // CONSULTA DE PERSONAL
-  let datosPersonal = [];
-
-  function cargarPersonal() {
-    fetch(WEB_APP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "consultarPersonal", apiKey: API_KEY })
-    })
-    .then(res => res.json())
-    .then(res => {
-      if (res.status === "success") {
-        datosPersonal = res.data;
-        renderTabla(datosPersonal);
-      } else {
-        alert("Error al obtener datos: " + res.message);
-      }
-    })
-    .catch(err => alert("Error de conexión al cargar la lista."));
-  }
-
-  function renderTabla(lista) {
-    const tbody = document.querySelector("#tablaPersonal tbody");
-    tbody.innerHTML = "";
-
-    if (lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No se encontraron registros.</td></tr>';
-      return;
-    }
-
-    lista.forEach(p => {
-      tbody.innerHTML += `<tr>
-        <td><b>${p.cedula}</b></td>
-        <td>${p.nombre}</td>
-        <td>${p.departamento}</td>
-        <td>${p.cargo}</td>
-      </tr>`;
-    });
-  }
-
-  function filtrarTabla() {
-    const q = document.getElementById("buscarInput").value.toLowerCase();
-    const filtrados = datosPersonal.filter(p => 
-      p.cedula.toLowerCase().includes(q) ||
-      p.nombre.toLowerCase().includes(q) ||
-      p.departamento.toLowerCase().includes(q) ||
-      p.cargo.toLowerCase().includes(q)
-    );
-    renderTabla(filtrados);
-  }
+  // ... (aquí mantienes el resto de funciones como registrarBitacoraQR y cargarPersonal) ...
 </script>
-
-</body>
-</html>
