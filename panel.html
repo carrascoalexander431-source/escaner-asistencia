@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel de Control - CUR May Hamilton</title>
 
-  <!-- Librerías indispensables -->
+  <!-- Librerías JS garantizadas via CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -48,14 +48,9 @@
       width: 90%;
       text-align: center;
       box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-      animation: fadeIn 0.2s ease-out;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
-    .modal-box h3 { margin-bottom: 10px; color: #0f172a; }
-    .modal-box p { font-size: 0.85rem; color: #64748b; margin-bottom: 15px; }
+    .modal-box h3 { margin-bottom: 5px; color: #0f172a; }
+    .modal-box p { font-size: 0.9rem; color: #64748b; margin-bottom: 15px; font-weight: bold; }
     #qrcodeContainer { display: flex; justify-content: center; margin: 15px 0; }
     .btn-close {
       background: #64748b; color: white; border: none; padding: 10px 20px;
@@ -75,8 +70,8 @@
 </header>
 
 <div class="nav-tabs">
-  <button class="tab-btn active" onclick="cambiarTab('generador', event)">🪪 Generador de QR</button>
-  <button class="tab-btn" onclick="cambiarTab('consulta', event)">🔍 Consulta de Personal</button>
+  <button id="btnTabGen" class="tab-btn active" onclick="cambiarTab('generador')">🪪 Generador de QR</button>
+  <button id="btnTabCon" class="tab-btn" onclick="cambiarTab('consulta')">🔍 Consulta de Personal</button>
 </div>
 
 <div class="container">
@@ -90,7 +85,7 @@
       <input type="text" id="cedula" placeholder="Ej: V-12345678" style="width:100%;">
     </div>
     <div class="form-group">
-      <label for="secretKey">Clave Secreta Institucional (Opcional si usa la por defecto):</label>
+      <label for="secretKey">Clave Secreta Institucional (Opcional):</label>
       <input type="password" id="secretKey" placeholder="Ingresa la clave maestra" style="width:100%;">
     </div>
     <button class="btn-primary" onclick="generarQREmergente()">Generar Código QR</button>
@@ -133,81 +128,83 @@
     <button class="btn-close" onclick="cerrarModal()">Cerrar Ventana</button>
   </div>
 </div>
+
 <script>
   const API_KEY = "MiClaveSuperSegura2026";
   const SECRET_KEY_DEF = "MiClaveSegura2026";
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
 
-  // Control de sesión y navegación...
-  if (!sessionStorage.getItem("session_token")) {
-    window.location.href = "login.html";
-  } else {
-    const user = sessionStorage.getItem("session_user") || "Usuario";
-    document.getElementById("userDisplay").innerText = "👤 " + user;
-  }
+  // Verificar sesión al cargar
+  window.onload = function() {
+    if (!sessionStorage.getItem("session_token")) {
+      window.location.href = "login.html";
+    } else {
+      const user = sessionStorage.getItem("session_user") || "Usuario";
+      document.getElementById("userDisplay").innerText = "👤 " + user;
+    }
+  };
 
   function cerrarSesion() {
     sessionStorage.clear();
     window.location.href = "login.html";
   }
 
-  function cambiarTab(tabId, evt) {
+  function cambiarTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    
     document.getElementById(tabId).classList.add('active');
-    if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
+    if (tabId === 'generador') document.getElementById('btnTabGen').classList.add('active');
+    if (tabId === 'consulta') document.getElementById('btnTabCon').classList.add('active');
   }
 
-  // =========================================================
-  // AQUÍ COLOCAS LA FUNCIÓN CON DIAGNÓSTICO
-  // =========================================================
+  // FUNCIÓN PRINCIPAL PARA GENERAR QR EN MODAL
   function generarQREmergente() {
     const cedulaInput = document.getElementById("cedula");
     const keyInput = document.getElementById("secretKey");
     const qrContainer = document.getElementById("qrcodeContainer");
 
     if (!cedulaInput || !cedulaInput.value.trim()) {
-      alert("Por favor ingrese la cédula.");
+      alert("Por favor ingrese la cédula o ID del empleado.");
       return;
     }
 
     const cedula = cedulaInput.value.trim();
     const key = keyInput && keyInput.value.trim() ? keyInput.value.trim() : SECRET_KEY_DEF;
 
-    // Comprobación de la librería en el navegador
+    // Verificar si la librería QRCode existe
     if (typeof QRCode === "undefined") {
-      alert("Error: La librería QRCode.js no se ha cargado. Verifica las etiquetas <script> en el <head>.");
+      alert("Error: La librería de generación QR no cargó correctamente.");
       return;
     }
 
+    // Limpiar contenedor previo
     qrContainer.innerHTML = "";
 
     try {
-      // 1. Cifrar en AES
+      // 1. Cifrar los datos
       const payload = JSON.stringify({ id: cedula, origen: "CUR_MAY_HAMILTON" });
       const cifrado = CryptoJS.AES.encrypt(payload, key).toString();
 
-      // 2. Generar código QR
+      // 2. Renderizar QR
       new QRCode(qrContainer, {
         text: cifrado,
         width: 200,
         height: 200,
         colorDark: "#000000",
         colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
+        correctLevel: QRCode.CorrectLevel.M
       });
 
-      // 3. Abrir ventana emergente
+      // 3. Mostrar Modal
       document.getElementById("modalCedulaText").innerText = "Cédula: " + cedula;
       document.getElementById("qrModal").style.display = "flex";
 
-      // 4. Registro en la bitácora
-      if (typeof registrarBitacoraQR === "function") {
-        registrarBitacoraQR(cedula);
-      }
+      // 4. Bitácora
+      registrarBitacoraQR(cedula);
 
     } catch (err) {
-      alert("Error al generar el QR: " + err.message);
+      alert("Error al procesar el código QR: " + err.message);
     }
   }
 
@@ -215,5 +212,72 @@
     document.getElementById("qrModal").style.display = "none";
   }
 
-  // ... (El resto de funciones como registrarBitacoraQR, cargarPersonal, etc.)
+  function registrarBitacoraQR(cedulaGenerada) {
+    const usuarioActual = sessionStorage.getItem("session_user") || "Desconocido";
+
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "registrarGeneracionQR",
+        usuario: usuarioActual,
+        rol: "Administrador",
+        cedulaGenerada: cedulaGenerada
+      })
+    }).catch(e => console.log("Bitácora:", e));
+  }
+
+  // CONSULTA DE PERSONAL
+  let datosPersonal = [];
+
+  function cargarPersonal() {
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "consultarPersonal", apiKey: API_KEY })
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.status === "success") {
+        datosPersonal = res.data;
+        renderTabla(datosPersonal);
+      } else {
+        alert("Error al obtener datos: " + res.message);
+      }
+    })
+    .catch(err => alert("Error de conexión al cargar la lista."));
+  }
+
+  function renderTabla(lista) {
+    const tbody = document.querySelector("#tablaPersonal tbody");
+    tbody.innerHTML = "";
+
+    if (lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No se encontraron registros.</td></tr>';
+      return;
+    }
+
+    lista.forEach(p => {
+      tbody.innerHTML += `<tr>
+        <td><b>${p.cedula}</b></td>
+        <td>${p.nombre}</td>
+        <td>${p.departamento}</td>
+        <td>${p.cargo}</td>
+      </tr>`;
+    });
+  }
+
+  function filtrarTabla() {
+    const q = document.getElementById("buscarInput").value.toLowerCase();
+    const filtrados = datosPersonal.filter(p => 
+      p.cedula.toLowerCase().includes(q) ||
+      p.nombre.toLowerCase().includes(q) ||
+      p.departamento.toLowerCase().includes(q) ||
+      p.cargo.toLowerCase().includes(q)
+    );
+    renderTabla(filtrados);
+  }
 </script>
+
+</body>
+</html>
