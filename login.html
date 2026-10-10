@@ -8,8 +8,9 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
     body { background: #f1f5f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .login-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 380px; text-align: center; }
-    .logo { max-width: 100px; margin-bottom: 15px; }
-    h2 { color: #0f172a; margin-bottom: 20px; font-size: 1.3rem; }
+    .logo { max-width: 110px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto; }
+    h2 { color: #0f172a; margin-bottom: 5px; font-size: 1.3rem; }
+    p.subtitle { color: #64748b; font-size: 0.82rem; margin-bottom: 20px; }
     .input-group { text-align: left; margin-bottom: 15px; }
     label { font-size: 0.85rem; font-weight: 600; color: #475569; display: block; margin-bottom: 5px; }
     input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; }
@@ -22,8 +23,11 @@
 <body>
 
 <div class="login-card">
-  <img src="https://raw.githubusercontent.com/TU_USUARIO/TU_REPOSITO/main/logo.png" alt="Logo" class="logo" onerror="this.style.display='none'">
+  <!-- LOGO DE LA UNIVERSIDAD -->
+  <img src="logo.png" alt="Logo CUR May Hamilton" class="logo" onerror="this.style.display='none'">
+  
   <h2>Acceso Administrativo</h2>
+  <p class="subtitle">Colegio Universitario de Rehabilitación "May Hamilton"</p>
 
   <div class="input-group">
     <label>Usuario:</label>
@@ -32,7 +36,7 @@
 
   <div class="input-group">
     <label>Contraseña:</label>
-    <input type="password" id="passInput" placeholder="••••••••">
+    <input type="password" id="passInput" placeholder="••••••••" onkeypress="if(event.key==='Enter') iniciarSesion()">
   </div>
 
   <button onclick="iniciarSesion()">Ingresar al Sistema</button>
