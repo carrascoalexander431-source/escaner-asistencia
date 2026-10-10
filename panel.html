@@ -16,7 +16,7 @@
     .nav-tabs { display: flex; gap: 10px; background: #e2e8f0; padding: 10px 25px; }
     .tab-btn { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; border-radius: 6px; }
     .tab-btn.active { background: #2563eb; color: white; }
-    .container { max-width: 900px; margin: 25px auto; padding: 0 20px; }
+    .container { max-width: 1000px; margin: 25px auto; padding: 0 20px; }
     .tab-content { display: none; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
     .tab-content.active { display: block; }
     input, button { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; }
@@ -25,6 +25,11 @@
     button.btn-primary { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
     button.btn-primary:hover { background: #1d4ed8; }
     button.btn-logout { background: #ef4444; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+    
+    .search-bar { display: flex; gap: 10px; margin-bottom: 15px; }
+    .btn-search { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: bold; padding: 10px 20px; border-radius: 6px; display: flex; align-items: center; gap: 6px; }
+    .btn-search:hover { background: #1d4ed8; }
+    
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; font-size: 0.9rem; }
     th { background: #f1f5f9; }
@@ -71,12 +76,12 @@
 
 <div class="nav-tabs">
   <button id="btnTabGen" class="tab-btn active" onclick="cambiarTab('generador')">🪪 Generador de QR</button>
-  <button id="btnTabCon" class="tab-btn" onclick="cambiarTab('consulta')">🔍 Consulta de Personal</button>
+  <button id="btnTabCon" class="tab-btn" onclick="cambiarTab('consulta')">🔍 Historial de Asistencias</button>
 </div>
 
 <div class="container">
 
-  <!-- MÓDULO 1: GENERADOR DE QR (SIMPLIFICADO) -->
+  <!-- MÓDULO 1: GENERADOR DE QR -->
   <div id="generador" class="tab-content active">
     <h2>Generador de QR Cifrado</h2>
     <hr style="margin: 15px 0;">
@@ -89,26 +94,30 @@
     <button class="btn-primary" onclick="generarQREmergente()">Generar Código QR</button>
   </div>
 
-  <!-- MÓDULO 2: CONSULTA DE PERSONAL -->
+  <!-- MÓDULO 2: HISTORIAL DE ASISTENCIAS -->
   <div id="consulta" class="tab-content">
-    <h2>Consulta de Personal Registrado</h2>
+    <h2>Consulta de Registro de Asistencias</h2>
     <hr style="margin: 15px 0;">
-    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-      <input type="text" id="buscarInput" placeholder="Buscar por Nombre, Cédula o Cargo..." onkeyup="filtrarTabla()" style="flex:1;">
+    
+    <div class="search-bar">
+      <input type="text" id="buscarInput" placeholder="Ingresa Cédula (Ej: V-11992598) o Nombre..." onkeypress="if(event.key==='Enter') buscarAsistencias()" style="flex:1;">
+      <button class="btn-search" onclick="buscarAsistencias()">🔍 Buscar</button>
+      <button onclick="cargarAsistencias()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; padding: 10px 15px; border-radius:6px;">🔄 Ver Todo</button>
     </div>
-    <button onclick="cargarPersonal()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; margin-bottom: 15px; padding: 10px 15px; border-radius:6px;">🔄 Cargar / Actualizar Lista</button>
 
     <table id="tablaPersonal">
       <thead>
         <tr>
+          <th>Fecha</th>
+          <th>Hora</th>
           <th>Cédula</th>
           <th>Nombre Completo</th>
           <th>Departamento</th>
-          <th>Cargo</th>
+          <th>Estatus</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="4" style="text-align:center;">Presione "Cargar / Actualizar Lista" para obtener la información.</td></tr>
+        <tr><td colspan="6" style="text-align:center;">Ingresa una cédula y presiona "🔍 Buscar" o haz clic en "Ver Todo".</td></tr>
       </tbody>
     </table>
   </div>
@@ -120,9 +129,7 @@
   <div class="modal-box">
     <h3>Código QR Generado</h3>
     <p id="modalCedulaText">Cédula: -</p>
-    
     <div id="qrcodeContainer"></div>
-
     <button class="btn-close" onclick="cerrarModal()">Cerrar Ventana</button>
   </div>
 </div>
@@ -132,7 +139,6 @@
   const SECRET_KEY_DEF = "MiClaveSegura2026";
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
 
-  // Control de sesión al cargar la página
   window.onload = function() {
     if (!sessionStorage.getItem("session_token")) {
       window.location.href = "login.html";
@@ -153,10 +159,12 @@
     
     document.getElementById(tabId).classList.add('active');
     if (tabId === 'generador') document.getElementById('btnTabGen').classList.add('active');
-    if (tabId === 'consulta') document.getElementById('btnTabCon').classList.add('active');
+    if (tabId === 'consulta') {
+      document.getElementById('btnTabCon').classList.add('active');
+      cargarAsistencias();
+    }
   }
 
-  // GENERACIÓN DE QR AUTOMÁTICA CON CLAVE MAESTRA
   function generarQREmergente() {
     const cedulaInput = document.getElementById("cedula");
     const qrContainer = document.getElementById("qrcodeContainer");
@@ -167,20 +175,12 @@
     }
 
     const cedula = cedulaInput.value.trim();
-
-    if (typeof QRCode === "undefined") {
-      alert("Error: La librería QRCode no se ha cargado correctamente.");
-      return;
-    }
-
     qrContainer.innerHTML = "";
 
     try {
-      // 1. Cifrar con la constante secreta institucional
       const payload = JSON.stringify({ id: cedula, origen: "CUR_MAY_HAMILTON" });
       const cifrado = CryptoJS.AES.encrypt(payload, SECRET_KEY_DEF).toString();
 
-      // 2. Renderizar el QR
       new QRCode(qrContainer, {
         text: cifrado,
         width: 200,
@@ -190,15 +190,12 @@
         correctLevel: QRCode.CorrectLevel.M
       });
 
-      // 3. Desplegar la ventana emergente
       document.getElementById("modalCedulaText").innerText = "Cédula: " + cedula;
       document.getElementById("qrModal").style.display = "flex";
 
-      // 4. Registrar la acción en la bitácora de Google Sheets
       if (typeof registrarBitacoraQR === "function") {
         registrarBitacoraQR(cedula);
       }
-
     } catch (err) {
       alert("Error al procesar el código QR: " + err.message);
     }
@@ -210,7 +207,6 @@
 
   function registrarBitacoraQR(cedulaGenerada) {
     const usuarioActual = sessionStorage.getItem("session_user") || "Desconocido";
-
     fetch(WEB_APP_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -223,55 +219,69 @@
     }).catch(e => console.log("Bitácora:", e));
   }
 
-  // CONSULTA DE PERSONAL
-  let datosPersonal = [];
+  // CONSULTA DE ASISTENCIAS
+  let datosAsistencias = [];
 
-  function cargarPersonal() {
+  function cargarAsistencias() {
+    const tbody = document.querySelector("#tablaPersonal tbody");
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">⏳ Cargando registros...</td></tr>';
+
     fetch(WEB_APP_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "consultarPersonal", apiKey: API_KEY })
+      body: JSON.stringify({ action: "consultarAsistencias", apiKey: API_KEY })
     })
     .then(res => res.json())
     .then(res => {
       if (res.status === "success") {
-        datosPersonal = res.data;
-        renderTabla(datosPersonal);
+        datosAsistencias = res.data;
+        buscarAsistencias();
       } else {
-        alert("Error al obtener datos: " + res.message);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Error al obtener datos.</td></tr>';
       }
     })
-    .catch(err => alert("Error de conexión al cargar la lista."));
+    .catch(err => {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Error de conexión.</td></tr>';
+    });
+  }
+
+  function buscarAsistencias() {
+    const query = document.getElementById("buscarInput").value.trim().toLowerCase();
+    
+    if (!query) {
+      renderTabla(datosAsistencias);
+      return;
+    }
+
+    const filtrados = datosAsistencias.filter(a => 
+      (a.cedula && a.cedula.toLowerCase().includes(query)) ||
+      (a.nombre && a.nombre.toLowerCase().includes(query)) ||
+      (a.fecha && a.fecha.toString().toLowerCase().includes(query))
+    );
+
+    renderTabla(filtrados);
   }
 
   function renderTabla(lista) {
     const tbody = document.querySelector("#tablaPersonal tbody");
     tbody.innerHTML = "";
 
-    if (lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No se encontraron registros.</td></tr>';
+    if (!lista || lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No se encontraron registros de ingreso para esta búsqueda.</td></tr>';
       return;
     }
 
-    lista.forEach(p => {
+    // Ordenar para mostrar las fechas/horas más recientes primero
+    lista.slice().reverse().forEach(a => {
       tbody.innerHTML += `<tr>
-        <td><b>${p.cedula}</b></td>
-        <td>${p.nombre}</td>
-        <td>${p.departamento}</td>
-        <td>${p.cargo}</td>
+        <td>${a.fecha}</td>
+        <td><b>${a.hora}</b></td>
+        <td><b>${a.cedula}</b></td>
+        <td>${a.nombre}</td>
+        <td>${a.departamento}</td>
+        <td><span style="background:#dcfce7; color:#15803d; padding:3px 8px; border-radius:4px; font-weight:bold; font-size:0.8rem;">${a.estatus}</span></td>
       </tr>`;
     });
-  }
-
-  function filtrarTabla() {
-    const q = document.getElementById("buscarInput").value.toLowerCase();
-    const filtrados = datosPersonal.filter(p => 
-      p.cedula.toLowerCase().includes(q) ||
-      p.nombre.toLowerCase().includes(q) ||
-      p.departamento.toLowerCase().includes(q) ||
-      p.cargo.toLowerCase().includes(q)
-    );
-    renderTabla(filtrados);
   }
 </script>
 
