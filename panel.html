@@ -100,7 +100,7 @@
     <hr style="margin: 15px 0;">
     
     <div class="search-bar">
-      <input type="text" id="buscarInput" placeholder="Ingresa Cédula (Ej: V-11992598) o Nombre..." onkeypress="if(event.key==='Enter') buscarAsistencias()" style="flex:1;">
+     <input type="text" id="buscarInput" placeholder="Ingresa Cédula (Ej: V-11992598) o Nombre..." oninput="buscarAsistencias()" style="flex:1;">
       <button class="btn-search" onclick="buscarAsistencias()">🔍 Buscar</button>
       <button onclick="cargarAsistencias()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; padding: 10px 15px; border-radius:6px;">🔄 Ver Todo</button>
     </div>
