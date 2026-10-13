@@ -55,6 +55,9 @@
   </form>
 
   <script>
+    // =========================================================================
+    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
+    // =========================================================================
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
 
     let escaneando = true;
@@ -74,13 +77,12 @@
 
       try {
         const obj = JSON.parse(decodedText);
-        if (obj.id) cedulaVal = obj.id;
         if (obj.cedula) cedulaVal = obj.cedula;
         if (obj.nombre) nombreVal = obj.nombre;
         if (obj.departamento) dptoVal = obj.departamento;
         if (obj.cargo) cargoVal = obj.cargo;
       } catch(e) {
-        // Texto plano o cifrado (si se maneja descifrado en Apps Script)
+        // Texto plano
       }
 
       // Rellenar el formulario oculto y enviarlo
@@ -96,7 +98,7 @@
       // Mostrar confirmación
       setTimeout(() => {
         statusDiv.className = "success";
-        statusDiv.innerText = "✅ ¡Asistencia registrada con éxito!";
+        statusDiv.innerText = "✅ ¡Asistencia registrada y enviada a Telegram!";
         
         setTimeout(() => {
           statusDiv.className = "";
