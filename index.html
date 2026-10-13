@@ -157,6 +157,7 @@
       mostrarResultado("info", "⏳ Verificando cédula en la base de datos...");
 
       const payload = {
+        action: "registrarAsistencia", // <-- Parámetro clave añadido para que el backend lo reconozca
         apiKey: API_KEY,
         cedula: cedulaEmpleado,
         timestamp: new Date().toISOString()
