@@ -3,136 +3,214 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Escáner de Asistencia QR - CUR May Hamilton</title>
-  <!-- Librería del Escáner QR y CryptoJS para desencriptar -->
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <title>Control de Asistencia - Escáner QR</title>
+  
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      text-align: center;
-      background-color: #f0f2f5;
+    * {
+      box-sizing: border-box;
       margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #f4f6f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
       padding: 20px;
     }
-    .card {
-      max-width: 420px;
-      margin: 20px auto;
-      background: white;
+
+    .container {
+      background: #ffffff;
       padding: 25px;
       border-radius: 12px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
     }
-    h2 { color: #1a73e8; margin-bottom: 20px; }
-    #reader { width: 100%; border-radius: 8px; overflow: hidden; }
-    #status {
-      margin-top: 20px;
-      padding: 12px;
+
+    h2 {
+      color: #1a252f;
+      margin-bottom: 8px;
+      font-size: 1.4rem;
+    }
+
+    p.subtitle {
+      color: #7f8c8d;
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+
+    #reader {
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px dashed #cbd5e1;
+      background: #f8fafc;
+      min-height: 250px;
+    }
+
+    #reader button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 8px 16px;
       border-radius: 6px;
-      font-weight: bold;
-      font-size: 1rem;
-      background: #e8f0fe;
-      color: #1967d2;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-top: 10px;
     }
-    .success { background-color: #d4edda !important; color: #155724 !important; }
-    .error { background-color: #f8d7da !important; color: #721c24 !important; }
+
+    #result-box {
+      margin-top: 20px;
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: none;
+      word-break: break-word;
+    }
+
+    .status-info { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+    .status-success { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .status-error { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
   </style>
+
+  <!-- Librerías -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body>
 
-  <div class="card">
-    <h2>📷 Lector de Asistencia QR</h2>
+  <div class="container">
+    <h2>Control de Asistencia</h2>
+    <p class="subtitle">Escanee el código QR de su carnet institucional</p>
+
     <div id="reader"></div>
-    <div id="status">Apunta la cámara al código QR del empleado</div>
+    <div id="result-box"></div>
   </div>
 
   <script>
-    // URL de tu Web App de Google Apps Script
+    // ==========================================
+    // CONFIGURACIÓN DE PARÁMETROS DEL SISTEMA
+    // ==========================================
+    const SECRET_KEY = "MiClaveSegura2026"; 
+    const API_KEY = "MiClaveSuperSegura2026";    
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
-    const SECRET_KEY_DEF = "MiClaveSegura2026"; // Clave de cifrado AES
 
-    let escaneando = true;
+    let html5QrcodeScanner = null;
+
+    function mostrarResultado(tipo, mensaje) {
+      const resultBox = document.getElementById("result-box");
+      resultBox.className = "";
+      resultBox.style.display = "block";
+
+      if (tipo === "info") resultBox.classList.add("status-info");
+      if (tipo === "success") resultBox.classList.add("status-success");
+      if (tipo === "error") resultBox.classList.add("status-error");
+
+      resultBox.innerText = mensaje;
+    }
 
     function onScanSuccess(decodedText, decodedResult) {
-      if (!escaneando) return;
-      escaneando = false;
-
-      const statusDiv = document.getElementById("status");
-      statusDiv.className = "";
-      statusDiv.innerText = "⏳ Procesando código QR...";
-
-      let cedulaVal = decodedText;
-
-      // Intentar descifrar o interpretar el texto del QR
-      try {
-        // Primero intentamos ver si viene cifrado con AES
-        const bytes = CryptoJS.AES.decrypt(decodedText, SECRET_KEY_DEF);
-        const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
-        
-        if (decryptedData) {
-          const obj = JSON.parse(decryptedData);
-          if (obj.id) cedulaVal = obj.id;
-          if (obj.cedula) cedulaVal = obj.cedula;
-        } else {
-          // Si no está cifrado, intentamos parsearlo directamente como JSON plano
-          const obj = JSON.parse(decodedText);
-          if (obj.id) cedulaVal = obj.id;
-          if (obj.cedula) cedulaVal = obj.cedula;
-        }
-      } catch(e) {
-        // Si es texto plano (ej. solo la cédula), se queda con el valor de decodedText
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear().catch(err => console.error(err));
       }
 
-      statusDiv.innerText = "⏳ Registrando asistencia para Cédula: " + cedulaVal + "...";
+      mostrarResultado("info", "🔑 Decodificando código QR...");
 
-      // Enviar los datos por POST a Google Sheets para que registre la asistencia y envíe Telegram
-      fetch(WEB_APP_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          action: "registrarAsistencia",
-          cedula: cedulaVal,
-          estado: "Presente"
-        })
-      })
-      .then(res => res.json())
-      .then(res => {
-        if (res.status === "success" || res.resultado === "ok") {
-          statusDiv.className = "success";
-          statusDiv.innerText = "✅ ¡Asistencia registrada y enviada a Telegram!";
-        } else {
-          statusDiv.className = "success"; // Lo marcamos verde igual si el servidor procesó la entrada
-          statusDiv.innerText = "✅ ¡Asistencia procesada correctamente!";
+      try {
+        const qrTextoLimpio = decodedText.trim();
+        let decryptedDataText = "";
+
+        // Intentar desencriptar atrapando errores de codificación UTF-8
+        try {
+          const bytes = CryptoJS.AES.decrypt(qrTextoLimpio, SECRET_KEY);
+          decryptedDataText = bytes.toString(CryptoJS.enc.Utf8);
+        } catch (e) {
+          throw new Error("El código QR no es válido o fue generado con otra clave secreta.");
         }
 
-        // Volver a habilitar el escáner después de 3 segundos
-        setTimeout(() => {
-          statusDiv.className = "";
-          statusDiv.innerText = "Apunta la cámara al código QR del empleado";
-          escaneando = true;
-        }, 3000);
+        if (!decryptedDataText) {
+          throw new Error("El código QR no es válido o fue generado con otra clave secreta.");
+        }
+
+        const dataObj = JSON.parse(decryptedDataText);
+        const cedulaExtraida = dataObj.id || dataObj.cedula;
+
+        if (dataObj.origen !== "CUR_MAY_HAMILTON" || !cedulaExtraida) {
+          throw new Error("El código QR no pertenece a esta institución.");
+        }
+
+        procesarMarcaje(cedulaExtraida);
+
+      } catch (error) {
+        mostrarResultado("error", "❌ " + error.message);
+        setTimeout(() => { iniciarEscaner(); }, 4000);
+      }
+    }
+
+    function procesarMarcaje(cedulaEmpleado) {
+      mostrarResultado("info", "⏳ Verificando cédula en la base de datos...");
+
+      const payload = {
+        apiKey: API_KEY,
+        cedula: cedulaEmpleado,
+        timestamp: new Date().toISOString()
+      };
+
+      fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "success") {
+          mostrarResultado("success", `✅ ¡Asistencia registrada para C.I. ${cedulaEmpleado}!`);
+          setTimeout(() => { iniciarEscaner(); }, 4000);
+        } else if (data.status === "not_found") {
+          mostrarResultado("error", `❌ La C.I. ${cedulaEmpleado} no existe en la base de datos. Acuda a RRHH.`);
+          setTimeout(() => { iniciarEscaner(); }, 5000);
+        } else {
+          mostrarResultado("error", `❌ Error: ${data.message}`);
+          setTimeout(() => { iniciarEscaner(); }, 4000);
+        }
       })
       .catch(err => {
-        // Incluso si hay un bloqueo CORS típico de Google Apps Script en la respuesta, 
-        // el servidor suele procesar la petición perfectamente. Damos por exitoso el envío:
-        statusDiv.className = "success";
-        statusDiv.innerText = "✅ ¡Asistencia enviada a Telegram!";
-
-        setTimeout(() => {
-          statusDiv.className = "";
-          statusDiv.innerText = "Apunta la cámara al código QR del empleado";
-          escaneando = true;
-        }, 3000);
+        mostrarResultado("error", "❌ Error de conexión al servidor.");
+        setTimeout(() => { iniciarEscaner(); }, 4000);
       });
     }
 
-    // Inicializar el lector con la cámara trasera por defecto
-    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-      fps: 10, 
-      qrbox: 250,
-      facingMode: "environment" 
+    function onScanFailure(error) {
+      // Búsqueda continua
+    }
+
+    function iniciarEscaner() {
+      const resultBox = document.getElementById("result-box");
+      resultBox.style.display = "none";
+
+      html5QrcodeScanner = new Html5QrcodeScanner(
+        "reader", 
+        { 
+          fps: 10, 
+          qrbox: { width: 250, height: 250 } 
+        }, 
+        false
+      );
+
+      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      iniciarEscaner();
     });
-    html5QrcodeScanner.render(onScanSuccess);
   </script>
 </body>
 </html>
