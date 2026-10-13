@@ -3,215 +3,348 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Control de Asistencia - Escáner QR</title>
-  
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+  <title>Panel de Control - CUR May Hamilton</title>
 
-    body {
-      background-color: #f4f6f9;
-      display: flex;
+  <!-- Librerías JS para Cifrado y Generación de QR -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background: #f8fafc; color: #334155; }
+    header { background: #1e293b; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
+    .nav-tabs { display: flex; gap: 10px; background: #e2e8f0; padding: 10px 25px; overflow-x: auto; }
+    .tab-btn { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; border-radius: 6px; white-space: nowrap; }
+    .tab-btn.active { background: #2563eb; color: white; }
+    .container { max-width: 1000px; margin: 25px auto; padding: 0 20px; }
+    .tab-content { display: none; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .tab-content.active { display: block; }
+    input, button { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.85rem; }
+    button.btn-primary { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
+    button.btn-primary:hover { background: #1d4ed8; }
+    button.btn-logout { background: #ef4444; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+    
+    .search-bar { display: flex; gap: 10px; margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; font-size: 0.9rem; }
+    th { background: #f1f5f9; }
+
+    /* ESTILOS DE LA VENTANA EMERGENTE (MODAL) */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      padding: 20px;
+      z-index: 1000;
     }
-
-    .container {
-      background: #ffffff;
-      padding: 25px;
+    .modal-box {
+      background: white;
+      padding: 30px;
       border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      width: 100%;
-      max-width: 480px;
+      max-width: 380px;
+      width: 90%;
       text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     }
-
-    h2 {
-      color: #1a252f;
-      margin-bottom: 8px;
-      font-size: 1.4rem;
+    .modal-box h3 { margin-bottom: 5px; color: #0f172a; }
+    .modal-box p { font-size: 0.9rem; color: #64748b; margin-bottom: 15px; font-weight: bold; }
+    #qrcodeContainer { display: flex; justify-content: center; margin: 15px 0; }
+    .btn-close {
+      background: #64748b; color: white; border: none; padding: 10px 20px;
+      border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px;
     }
-
-    p.subtitle {
-      color: #7f8c8d;
-      font-size: 0.9rem;
-      margin-bottom: 20px;
-    }
-
-    #reader {
-      width: 100%;
-      border-radius: 8px;
-      overflow: hidden;
-      border: 2px dashed #cbd5e1;
-      background: #f8fafc;
-      min-height: 250px;
-    }
-
-    #reader button {
-      background-color: #2563eb;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      margin-top: 10px;
-    }
-
-    #result-box {
-      margin-top: 20px;
-      padding: 12px 15px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.95rem;
-      display: none;
-      word-break: break-word;
-    }
-
-    .status-info { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
-    .status-success { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-    .status-error { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .btn-close:hover { background: #475569; }
   </style>
-
-  <!-- Librerías -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body>
 
-  <div class="container">
-    <h2>Control de Asistencia</h2>
-    <p class="subtitle">Escanee el código QR de su carnet institucional</p>
+<header>
+  <h3>Control Institucional - May Hamilton</h3>
+  <div>
+    <span id="userDisplay" style="margin-right: 15px; font-size: 0.9rem;"></span>
+    <button class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
+  </div>
+</header>
 
-    <div id="reader"></div>
-    <div id="result-box"></div>
+<div class="nav-tabs">
+  <button id="btnTabGen" class="tab-btn active" onclick="cambiarTab('generador')">🪪 Generador de QR</button>
+  <button id="btnTabEmp" class="tab-btn" onclick="cambiarTab('personal')">👥 Consulta de Personal</button>
+  <button id="btnTabCon" class="tab-btn" onclick="cambiarTab('consulta')">📋 Auditoría de Asistencias</button>
+</div>
+
+<div class="container">
+
+  <!-- MÓDULO 1: GENERADOR DE QR -->
+  <div id="generador" class="tab-content active">
+    <h2>Generador de QR Cifrado</h2>
+    <hr style="margin: 15px 0;">
+    <div class="form-group">
+      <label for="cedula">Cédula / ID de Empleado:</label>
+      <input type="text" id="cedula" placeholder="Ej: V-12345678" style="width:100%;">
+    </div>
+    <button class="btn-primary" onclick="generarQREmergente()">Generar Código QR</button>
   </div>
 
-  <script>
-    // ==========================================
-    // CONFIGURACIÓN DE PARÁMETROS DEL SISTEMA
-    // ==========================================
-    const SECRET_KEY = "MiClaveSegura2026"; 
-    const API_KEY = "MiClaveSuperSegura2026";    
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
+  <!-- MÓDULO 2: CONSULTA DE PERSONAL (NÓMINA) -->
+  <div id="personal" class="tab-content">
+    <h2>Consulta de Personal Registrado</h2>
+    <hr style="margin: 15px 0;">
+    
+    <div class="search-bar">
+      <input type="text" id="buscarPersonalInput" placeholder="Busca por Cédula, Nombre o Departamento..." oninput="filtrarPersonal()" style="flex:1;">
+      <button onclick="cargarPersonal()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; padding: 10px 15px; border-radius:6px;">🔄 Actualizar</button>
+    </div>
 
-    let html5QrcodeScanner = null;
+    <table id="tablaPersonal">
+      <thead>
+        <tr>
+          <th>Cédula</th>
+          <th>Nombre Completo</th>
+          <th>Departamento</th>
+          <th>Cargo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="4" style="text-align:center;">Cargando personal...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-    function mostrarResultado(tipo, mensaje) {
-      const resultBox = document.getElementById("result-box");
-      resultBox.className = "";
-      resultBox.style.display = "block";
+  <!-- MÓDULO 3: HISTORIAL / AUDITORÍA DE ASISTENCIAS -->
+  <div id="consulta" class="tab-content">
+    <h2>Auditoría de Registro de Asistencias</h2>
+    <hr style="margin: 15px 0;">
+    
+    <div class="search-bar">
+      <input type="text" id="buscarAsistenciaInput" placeholder="Filtra por Cédula, Nombre o Fecha..." oninput="filtrarAsistencias()" style="flex:1;">
+      <button onclick="cargarAsistencias()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; padding: 10px 15px; border-radius:6px;">🔄 Actualizar</button>
+    </div>
 
-      if (tipo === "info") resultBox.classList.add("status-info");
-      if (tipo === "success") resultBox.classList.add("status-success");
-      if (tipo === "error") resultBox.classList.add("status-error");
+    <table id="tablaAsistencias">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Hora</th>
+          <th>Cédula</th>
+          <th>Nombre Completo</th>
+          <th>Departamento</th>
+          <th>Estatus</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="6" style="text-align:center;">Cargando registros...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-      resultBox.innerText = mensaje;
+</div>
+
+<!-- VENTANA EMERGENTE (MODAL QR) -->
+<div id="qrModal" class="modal-overlay">
+  <div class="modal-box">
+    <h3>Código QR Generado</h3>
+    <p id="modalCedulaText">Cédula: -</p>
+    <div id="qrcodeContainer"></div>
+    <button class="btn-close" onclick="cerrarModal()">Cerrar Ventana</button>
+  </div>
+</div>
+
+<script>
+  const API_KEY = "MiClaveSuperSegura2026";
+  const SECRET_KEY_DEF = "MiClaveSegura2026";
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
+
+  let datosPersonal = [];
+  let datosAsistencias = [];
+
+  window.onload = function() {
+    if (!sessionStorage.getItem("session_token")) {
+      window.location.href = "login.html";
+    } else {
+      const user = sessionStorage.getItem("session_user") || "Usuario";
+      document.getElementById("userDisplay").innerText = "👤 " + user;
+    }
+  };
+
+  function cerrarSesion() {
+    sessionStorage.clear();
+    window.location.href = "login.html";
+  }
+
+  function cambiarTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    
+    document.getElementById(tabId).classList.add('active');
+    if (tabId === 'generador') document.getElementById('btnTabGen').classList.add('active');
+    if (tabId === 'personal') {
+      document.getElementById('btnTabEmp').classList.add('active');
+      cargarPersonal();
+    }
+    if (tabId === 'consulta') {
+      document.getElementById('btnTabCon').classList.add('active');
+      cargarAsistencias();
+    }
+  }
+
+  // --- MÓDULO 1: GENERAR QR ---
+  function generarQREmergente() {
+    const cedulaInput = document.getElementById("cedula");
+    const qrContainer = document.getElementById("qrcodeContainer");
+
+    if (!cedulaInput || !cedulaInput.value.trim()) {
+      alert("Por favor ingrese la cédula o ID del empleado.");
+      return;
     }
 
-    function onScanSuccess(decodedText, decodedResult) {
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.clear().catch(err => console.error(err));
-      }
+    const cedula = cedulaInput.value.trim();
+    qrContainer.innerHTML = "";
 
-      mostrarResultado("info", "🔑 Decodificando código QR...");
+    try {
+      const payload = JSON.stringify({ id: cedula, origen: "CUR_MAY_HAMILTON" });
+      const cifrado = CryptoJS.AES.encrypt(payload, SECRET_KEY_DEF).toString();
 
-      try {
-        const qrTextoLimpio = decodedText.trim();
-        let decryptedDataText = "";
-
-        // Intentar desencriptar atrapando errores de codificación UTF-8
-        try {
-          const bytes = CryptoJS.AES.decrypt(qrTextoLimpio, SECRET_KEY);
-          decryptedDataText = bytes.toString(CryptoJS.enc.Utf8);
-        } catch (e) {
-          throw new Error("El código QR no es válido o fue generado con otra clave secreta.");
-        }
-
-        if (!decryptedDataText) {
-          throw new Error("El código QR no es válido o fue generado con otra clave secreta.");
-        }
-
-        const dataObj = JSON.parse(decryptedDataText);
-        const cedulaExtraida = dataObj.id || dataObj.cedula;
-
-        if (dataObj.origen !== "CUR_MAY_HAMILTON" || !cedulaExtraida) {
-          throw new Error("El código QR no pertenece a esta institución.");
-        }
-
-        procesarMarcaje(cedulaExtraida);
-
-      } catch (error) {
-        mostrarResultado("error", "❌ " + error.message);
-        setTimeout(() => { iniciarEscaner(); }, 4000);
-      }
-    }
-
-    function procesarMarcaje(cedulaEmpleado) {
-      mostrarResultado("info", "⏳ Verificando cédula en la base de datos...");
-
-      const payload = {
-        action: "registrarAsistencia", // <-- Parámetro clave añadido para que el backend lo reconozca
-        apiKey: API_KEY,
-        cedula: cedulaEmpleado,
-        timestamp: new Date().toISOString()
-      };
-
-      fetch(WEB_APP_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8"
-        },
-        body: JSON.stringify(payload)
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "success") {
-          mostrarResultado("success", `✅ ¡Asistencia registrada para C.I. ${cedulaEmpleado}!`);
-          setTimeout(() => { iniciarEscaner(); }, 4000);
-        } else if (data.status === "not_found") {
-          mostrarResultado("error", `❌ La C.I. ${cedulaEmpleado} no existe en la base de datos. Acuda a RRHH.`);
-          setTimeout(() => { iniciarEscaner(); }, 5000);
-        } else {
-          mostrarResultado("error", `❌ Error: ${data.message}`);
-          setTimeout(() => { iniciarEscaner(); }, 4000);
-        }
-      })
-      .catch(err => {
-        mostrarResultado("error", "❌ Error de conexión al servidor.");
-        setTimeout(() => { iniciarEscaner(); }, 4000);
+      new QRCode(qrContainer, {
+        text: cifrado,
+        width: 200, height: 200,
+        colorDark: "#000000", colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
       });
+
+      document.getElementById("modalCedulaText").innerText = "Cédula: " + cedula;
+      document.getElementById("qrModal").style.display = "flex";
+      registrarBitacoraQR(cedula);
+    } catch (err) {
+      alert("Error al procesar el código QR: " + err.message);
     }
+  }
 
-    function onScanFailure(error) {
-      // Búsqueda continua
-    }
+  function cerrarModal() {
+    document.getElementById("qrModal").style.display = "none";
+  }
 
-    function iniciarEscaner() {
-      const resultBox = document.getElementById("result-box");
-      resultBox.style.display = "none";
+  function registrarBitacoraQR(cedulaGenerada) {
+    const usuarioActual = sessionStorage.getItem("session_user") || "Desconocido";
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "registrarGeneracionQR",
+        usuario: usuarioActual,
+        rol: "Administrador",
+        cedulaGenerada: cedulaGenerada
+      })
+    }).catch(e => console.log("Bitácora:", e));
+  }
 
-      html5QrcodeScanner = new Html5QrcodeScanner(
-        "reader", 
-        { 
-          fps: 10, 
-          qrbox: { width: 250, height: 250 } 
-        }, 
-        false
-      );
+  // --- MÓDULO 2: CONSULTA DE PERSONAL ---
+  function cargarPersonal() {
+    const tbody = document.querySelector("#tablaPersonal tbody");
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">⏳ Cargando personal...</td></tr>';
 
-      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      iniciarEscaner();
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "consultarPersonal", apiKey: API_KEY })
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.status === "success") {
+        datosPersonal = res.data;
+        filtrarPersonal();
+      } else {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Error al obtener la nómina.</td></tr>';
+      }
+    })
+    .catch(() => {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Error de conexión.</td></tr>';
     });
-  </script>
+  }
+
+  function filtrarPersonal() {
+    const query = document.getElementById("buscarPersonalInput").value.trim().toLowerCase();
+    const filtrados = datosPersonal.filter(p => 
+      (p.cedula && p.cedula.toLowerCase().includes(query)) ||
+      (p.nombre && p.nombre.toLowerCase().includes(query)) ||
+      (p.departamento && p.departamento.toLowerCase().includes(query))
+    );
+
+    const tbody = document.querySelector("#tablaPersonal tbody");
+    tbody.innerHTML = "";
+
+    if (filtrados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No se encontraron empleados con ese criterio.</td></tr>';
+      return;
+    }
+
+    filtrados.forEach(p => {
+      tbody.innerHTML += `<tr>
+        <td><b>${p.cedula}</b></td>
+        <td>${p.nombre}</td>
+        <td>${p.departamento}</td>
+        <td>${p.cargo}</td>
+      </tr>`;
+    });
+  }
+
+  // --- MÓDULO 3: AUDITORÍA DE ASISTENCIAS ---
+  function cargarAsistencias() {
+    const tbody = document.querySelector("#tablaAsistencias tbody");
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">⏳ Cargando registros de asistencia...</td></tr>';
+
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "consultarAsistencias", apiKey: API_KEY })
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.status === "success") {
+        datosAsistencias = res.data;
+        filtrarAsistencias();
+      } else {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Error al obtener asistencias.</td></tr>';
+      }
+    })
+    .catch(() => {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Error de conexión.</td></tr>';
+    });
+  }
+
+  function filtrarAsistencias() {
+    const query = document.getElementById("buscarAsistenciaInput").value.trim().toLowerCase();
+    const filtrados = datosAsistencias.filter(a => 
+      (a.cedula && a.cedula.toLowerCase().includes(query)) ||
+      (a.nombre && a.nombre.toLowerCase().includes(query)) ||
+      (a.fecha && a.fecha.toString().toLowerCase().includes(query))
+    );
+
+    const tbody = document.querySelector("#tablaAsistencias tbody");
+    tbody.innerHTML = "";
+
+    if (filtrados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No se encontraron registros de auditoría para esta búsqueda.</td></tr>';
+      return;
+    }
+
+    // Mostrar los más recientes primero
+    filtrados.slice().reverse().forEach(a => {
+      tbody.innerHTML += `<tr>
+        <td>${a.fecha}</td>
+        <td><b>${a.hora}</b></td>
+        <td><b>${a.cedula}</b></td>
+        <td>${a.nombre}</td>
+        <td>${a.departamento}</td>
+        <td><span style="background:#dcfce7; color:#15803d; padding:3px 8px; border-radius:4px; font-weight:bold; font-size:0.8rem;">${a.estatus}</span></td>
+      </tr>`;
+    });
+  }
+</script>
+
 </body>
 </html>
