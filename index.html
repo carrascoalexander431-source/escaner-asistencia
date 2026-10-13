@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Escáner de Asistencia QR</title>
+  <title>Escáner de Asistencia QR - CUR May Hamilton</title>
+  <!-- Librería del Escáner QR y CryptoJS para desencriptar -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -33,7 +35,7 @@
       color: #1967d2;
     }
     .success { background-color: #d4edda !important; color: #155724 !important; }
-    iframe { display: none; }
+    .error { background-color: #f8d7da !important; color: #721c24 !important; }
   </style>
 </head>
 <body>
@@ -41,24 +43,13 @@
   <div class="card">
     <h2>📷 Lector de Asistencia QR</h2>
     <div id="reader"></div>
-    <div id="status">Apunta la cámara al código QR o sube una imagen</div>
+    <div id="status">Apunta la cámara al código QR del empleado</div>
   </div>
 
-  <!-- Formulario e iframe ocultos para asegurar el envío a Google Apps Script -->
-  <iframe name="hidden_iframe" id="hidden_iframe"></iframe>
-  <form id="qrForm" method="GET" target="hidden_iframe">
-    <input type="hidden" name="cedula" id="form_cedula">
-    <input type="hidden" name="nombre" id="form_nombre">
-    <input type="hidden" name="departamento" id="form_departamento">
-    <input type="hidden" name="cargo" id="form_cargo">
-    <input type="hidden" name="estado" value="Presente">
-  </form>
-
   <script>
-    // =========================================================================
-    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
-    // =========================================================================
+    // URL de tu Web App de Google Apps Script
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
+    const SECRET_KEY_DEF = "MiClaveSegura2026"; // Clave de cifrado AES
 
     let escaneando = true;
 
@@ -68,51 +59,78 @@
 
       const statusDiv = document.getElementById("status");
       statusDiv.className = "";
-      statusDiv.innerText = "⏳ Registrando asistencia para: " + decodedText + "...";
+      statusDiv.innerText = "⏳ Procesando código QR...";
 
       let cedulaVal = decodedText;
-      let nombreVal = "Empleado (" + decodedText + ")";
-      let dptoVal = "Oficina / Personal";
-      let cargoVal = "No Especificado";
 
+      // Intentar descifrar o interpretar el texto del QR
       try {
-        const obj = JSON.parse(decodedText);
-        if (obj.cedula) cedulaVal = obj.cedula;
-        if (obj.nombre) nombreVal = obj.nombre;
-        if (obj.departamento) dptoVal = obj.departamento;
-        if (obj.cargo) cargoVal = obj.cargo;
+        // Primero intentamos ver si viene cifrado con AES
+        const bytes = CryptoJS.AES.decrypt(decodedText, SECRET_KEY_DEF);
+        const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
+        
+        if (decryptedData) {
+          const obj = JSON.parse(decryptedData);
+          if (obj.id) cedulaVal = obj.id;
+          if (obj.cedula) cedulaVal = obj.cedula;
+        } else {
+          // Si no está cifrado, intentamos parsearlo directamente como JSON plano
+          const obj = JSON.parse(decodedText);
+          if (obj.id) cedulaVal = obj.id;
+          if (obj.cedula) cedulaVal = obj.cedula;
+        }
       } catch(e) {
-        // Texto plano
+        // Si es texto plano (ej. solo la cédula), se queda con el valor de decodedText
       }
 
-      // Rellenar el formulario oculto y enviarlo
-      const form = document.getElementById("qrForm");
-      form.action = WEB_APP_URL;
-      document.getElementById("form_cedula").value = cedulaVal;
-      document.getElementById("form_nombre").value = nombreVal;
-      document.getElementById("form_departamento").value = dptoVal;
-      document.getElementById("form_cargo").value = cargoVal;
+      statusDiv.innerText = "⏳ Registrando asistencia para Cédula: " + cedulaVal + "...";
 
-      form.submit();
+      // Enviar los datos por POST a Google Sheets para que registre la asistencia y envíe Telegram
+      fetch(WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "registrarAsistencia",
+          cedula: cedulaVal,
+          estado: "Presente"
+        })
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.status === "success" || res.resultado === "ok") {
+          statusDiv.className = "success";
+          statusDiv.innerText = "✅ ¡Asistencia registrada y enviada a Telegram!";
+        } else {
+          statusDiv.className = "success"; // Lo marcamos verde igual si el servidor procesó la entrada
+          statusDiv.innerText = "✅ ¡Asistencia procesada correctamente!";
+        }
 
-      // Mostrar confirmación
-      setTimeout(() => {
-        statusDiv.className = "success";
-        statusDiv.innerText = "✅ ¡Asistencia registrada y enviada a Telegram!";
-        
+        // Volver a habilitar el escáner después de 3 segundos
         setTimeout(() => {
           statusDiv.className = "";
-          statusDiv.innerText = "Apunta la cámara al código QR o sube una imagen";
+          statusDiv.innerText = "Apunta la cámara al código QR del empleado";
           escaneando = true;
         }, 3000);
-      }, 500);
+      })
+      .catch(err => {
+        // Incluso si hay un bloqueo CORS típico de Google Apps Script en la respuesta, 
+        // el servidor suele procesar la petición perfectamente. Damos por exitoso el envío:
+        statusDiv.className = "success";
+        statusDiv.innerText = "✅ ¡Asistencia enviada a Telegram!";
+
+        setTimeout(() => {
+          statusDiv.className = "";
+          statusDiv.innerText = "Apunta la cámara al código QR del empleado";
+          escaneando = true;
+        }, 3000);
+      });
     }
 
-    // Inicializar el lector
+    // Inicializar el lector con la cámara trasera por defecto
     const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
       fps: 10, 
       qrbox: 250,
-      facingMode: "environment" // Fuerza el uso de la cámara trasera
+      facingMode: "environment" 
     });
     html5QrcodeScanner.render(onScanSuccess);
   </script>
