@@ -10,22 +10,18 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
     body { background: #f8fafc; color: #334155; }
     header { background: #1e293b; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
-    
     .nav-tabs { display: flex; gap: 10px; background: #e2e8f0; padding: 10px 25px; overflow-x: auto; }
-    .tab-btn { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; border-radius: 6px; white-space: nowrap; color: #475569; transition: all 0.2s ease; }
+    .tab-btn { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; border-radius: 6px; white-space: nowrap; }
     .tab-btn.active { background: #2563eb; color: white; }
-    
     .container { max-width: 1000px; margin: 25px auto; padding: 0 20px; }
     .tab-content { display: none; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
     .tab-content.active { display: block; }
-    
     input, button { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; }
     .form-group { margin-bottom: 15px; }
-    label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.85rem; color: #475569; }
-    
+    label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.85rem; }
     button.btn-primary { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
     button.btn-primary:hover { background: #1d4ed8; }
     button.btn-logout { background: #ef4444; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; }
@@ -33,7 +29,7 @@
     .search-bar { display: flex; gap: 10px; margin-bottom: 15px; }
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; font-size: 0.9rem; }
-    th { background: #f1f5f9; color: #1e293b; }
+    th { background: #f1f5f9; }
 
     /* ESTILOS DE LA VENTANA EMERGENTE (MODAL) */
     .modal-overlay {
@@ -75,7 +71,6 @@
   </div>
 </header>
 
-<!-- PESTAÑAS DE NAVEGACIÓN -->
 <div class="nav-tabs">
   <button id="btnTabGen" class="tab-btn active" onclick="cambiarTab('generador')">🪪 Generador de QR</button>
   <button id="btnTabEmp" class="tab-btn" onclick="cambiarTab('personal')">👥 Consulta de Personal</button>
@@ -95,14 +90,14 @@
     <button class="btn-primary" onclick="generarQREmergente()">Generar Código QR</button>
   </div>
 
-  <!-- MÓDULO 2: CONSULTA DE PERSONAL (NÓMINA GENERAL) -->
+  <!-- MÓDULO 2: CONSULTA DE PERSONAL (NÓMINA) -->
   <div id="personal" class="tab-content">
     <h2>Consulta de Personal Registrado</h2>
     <hr style="margin: 15px 0;">
     
     <div class="search-bar">
-      <input type="text" id="buscarPersonalInput" placeholder="Busca por Cédula (Ej: V-11992598), Nombre o Departamento..." oninput="filtrarPersonal()" style="flex:1;">
-      <button onclick="cargarPersonal()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; padding: 10px 15px; border-radius:6px;">🔄 Cargar / Actualizar Lista</button>
+      <input type="text" id="buscarPersonalInput" placeholder="Busca por Cédula, Nombre o Departamento..." oninput="filtrarPersonal()" style="flex:1;">
+      <button onclick="cargarPersonal()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; padding: 10px 15px; border-radius:6px;">🔄 Actualizar</button>
     </div>
 
     <table id="tablaPersonal">
@@ -115,19 +110,19 @@
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="4" style="text-align:center;">Escriba en la barra o presione "Cargar / Actualizar Lista" para obtener información.</td></tr>
+        <tr><td colspan="4" style="text-align:center;">Cargando personal...</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- MÓDULO 3: AUDITORÍA Y REGISTRO DE ASISTENCIAS -->
+  <!-- MÓDULO 3: HISTORIAL / AUDITORÍA DE ASISTENCIAS -->
   <div id="consulta" class="tab-content">
     <h2>Auditoría de Registro de Asistencias</h2>
     <hr style="margin: 15px 0;">
     
     <div class="search-bar">
       <input type="text" id="buscarAsistenciaInput" placeholder="Filtra por Cédula, Nombre o Fecha..." oninput="filtrarAsistencias()" style="flex:1;">
-      <button onclick="cargarAsistencias()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; padding: 10px 15px; border-radius:6px;">🔄 Cargar / Actualizar Registros</button>
+      <button onclick="cargarAsistencias()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; padding: 10px 15px; border-radius:6px;">🔄 Actualizar</button>
     </div>
 
     <table id="tablaAsistencias">
@@ -142,7 +137,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="6" style="text-align:center;">Escriba en la barra o presione "Cargar / Actualizar Registros" para auditar entradas.</td></tr>
+        <tr><td colspan="6" style="text-align:center;">Cargando registros...</td></tr>
       </tbody>
     </table>
   </div>
@@ -168,8 +163,12 @@
   let datosAsistencias = [];
 
   window.onload = function() {
-    const user = sessionStorage.getItem("session_user") || "Usuario";
-    document.getElementById("userDisplay").innerText = "👤 " + user;
+    if (!sessionStorage.getItem("session_token")) {
+      window.location.href = "login.html";
+    } else {
+      const user = sessionStorage.getItem("session_user") || "Usuario";
+      document.getElementById("userDisplay").innerText = "👤 " + user;
+    }
   };
 
   function cerrarSesion() {
@@ -185,11 +184,11 @@
     if (tabId === 'generador') document.getElementById('btnTabGen').classList.add('active');
     if (tabId === 'personal') {
       document.getElementById('btnTabEmp').classList.add('active');
-      if (datosPersonal.length === 0) cargarPersonal();
+      cargarPersonal();
     }
     if (tabId === 'consulta') {
       document.getElementById('btnTabCon').classList.add('active');
-      if (datosAsistencias.length === 0) cargarAsistencias();
+      cargarAsistencias();
     }
   }
 
@@ -263,22 +262,16 @@
       }
     })
     .catch(() => {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Error de conexión con el servidor.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Error de conexión.</td></tr>';
     });
   }
 
   function filtrarPersonal() {
-    if (datosPersonal.length === 0) {
-      cargarPersonal();
-      return;
-    }
-
     const query = document.getElementById("buscarPersonalInput").value.trim().toLowerCase();
     const filtrados = datosPersonal.filter(p => 
       (p.cedula && p.cedula.toLowerCase().includes(query)) ||
       (p.nombre && p.nombre.toLowerCase().includes(query)) ||
-      (p.departamento && p.departamento.toLowerCase().includes(query)) ||
-      (p.cargo && p.cargo.toLowerCase().includes(query))
+      (p.departamento && p.departamento.toLowerCase().includes(query))
     );
 
     const tbody = document.querySelector("#tablaPersonal tbody");
@@ -319,22 +312,16 @@
       }
     })
     .catch(() => {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Error de conexión con el servidor.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Error de conexión.</td></tr>';
     });
   }
 
   function filtrarAsistencias() {
-    if (datosAsistencias.length === 0) {
-      cargarAsistencias();
-      return;
-    }
-
     const query = document.getElementById("buscarAsistenciaInput").value.trim().toLowerCase();
     const filtrados = datosAsistencias.filter(a => 
       (a.cedula && a.cedula.toLowerCase().includes(query)) ||
       (a.nombre && a.nombre.toLowerCase().includes(query)) ||
-      (a.fecha && a.fecha.toString().toLowerCase().includes(query)) ||
-      (a.departamento && a.departamento.toLowerCase().includes(query))
+      (a.fecha && a.fecha.toString().toLowerCase().includes(query))
     );
 
     const tbody = document.querySelector("#tablaAsistencias tbody");
@@ -345,6 +332,7 @@
       return;
     }
 
+    // Mostrar los más recientes primero
     filtrados.slice().reverse().forEach(a => {
       tbody.innerHTML += `<tr>
         <td>${a.fecha}</td>
