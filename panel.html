@@ -13,8 +13,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
     body { background: #f8fafc; color: #334155; }
     header { background: #1e293b; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
-    .nav-tabs { display: flex; gap: 10px; background: #e2e8f0; padding: 10px 25px; }
-    .tab-btn { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; border-radius: 6px; }
+    .nav-tabs { display: flex; gap: 10px; background: #e2e8f0; padding: 10px 25px; overflow-x: auto; }
+    .tab-btn { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; border-radius: 6px; white-space: nowrap; }
     .tab-btn.active { background: #2563eb; color: white; }
     .container { max-width: 1000px; margin: 25px auto; padding: 0 20px; }
     .tab-content { display: none; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
@@ -27,9 +27,6 @@
     button.btn-logout { background: #ef4444; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; }
     
     .search-bar { display: flex; gap: 10px; margin-bottom: 15px; }
-    .btn-search { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: bold; padding: 10px 20px; border-radius: 6px; display: flex; align-items: center; gap: 6px; }
-    .btn-search:hover { background: #1d4ed8; }
-    
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; font-size: 0.9rem; }
     th { background: #f1f5f9; }
@@ -74,9 +71,11 @@
   </div>
 </header>
 
+<!-- MENÚ DE PESTAÑAS SUPERIOR CORREGIDO -->
 <div class="nav-tabs">
   <button id="btnTabGen" class="tab-btn active" onclick="cambiarTab('generador')">🪪 Generador de QR</button>
-  <button id="btnTabCon" class="tab-btn" onclick="cambiarTab('consulta')">🔍 Historial de Asistencias</button>
+  <button id="btnTabEmp" class="tab-btn" onclick="cambiarTab('personal')">👥 Consulta de Personal</button>
+  <button id="btnTabCon" class="tab-btn" onclick="cambiarTab('consulta')">📋 Auditoría de Asistencias</button>
 </div>
 
 <div class="container">
@@ -85,27 +84,49 @@
   <div id="generador" class="tab-content active">
     <h2>Generador de QR Cifrado</h2>
     <hr style="margin: 15px 0;">
-    
     <div class="form-group">
       <label for="cedula">Cédula / ID de Empleado:</label>
       <input type="text" id="cedula" placeholder="Ej: V-12345678" style="width:100%;">
     </div>
-
     <button class="btn-primary" onclick="generarQREmergente()">Generar Código QR</button>
   </div>
 
-  <!-- MÓDULO 2: HISTORIAL DE ASISTENCIAS -->
-  <div id="consulta" class="tab-content">
-    <h2>Consulta de Registro de Asistencias</h2>
+  <!-- MÓDULO 2: CONSULTA DE PERSONAL (NÓMINA) -->
+  <div id="personal" class="tab-content">
+    <h2>Consulta de Personal Registrado</h2>
     <hr style="margin: 15px 0;">
     
     <div class="search-bar">
-     <input type="text" id="buscarInput" placeholder="Ingresa Cédula (Ej: V-11992598) o Nombre..." oninput="buscarAsistencias()" style="flex:1;">
-      <button class="btn-search" onclick="buscarAsistencias()">🔍 Buscar</button>
-      <button onclick="cargarAsistencias()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; padding: 10px 15px; border-radius:6px;">🔄 Ver Todo</button>
+      <input type="text" id="buscarPersonalInput" placeholder="Busca por Cédula, Nombre o Departamento..." oninput="filtrarPersonal()" style="flex:1;">
+      <button onclick="cargarPersonal()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; padding: 10px 15px; border-radius:6px;">🔄 Actualizar Lista</button>
     </div>
 
     <table id="tablaPersonal">
+      <thead>
+        <tr>
+          <th>Cédula</th>
+          <th>Nombre Completo</th>
+          <th>Departamento</th>
+          <th>Cargo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="4" style="text-align:center;">Presiona "Actualizar Lista" para cargar los datos.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- MÓDULO 3: HISTORIAL / AUDITORÍA DE ASISTENCIAS -->
+  <div id="consulta" class="tab-content">
+    <h2>Auditoría de Registro de Asistencias</h2>
+    <hr style="margin: 15px 0;">
+    
+    <div class="search-bar">
+      <input type="text" id="buscarAsistenciaInput" placeholder="Filtra por Cédula, Nombre o Fecha..." oninput="filtrarAsistencias()" style="flex:1;">
+      <button onclick="cargarAsistencias()" style="background:#059669; color:white; border:none; cursor:pointer; font-weight:bold; padding: 10px 15px; border-radius:6px;">🔄 Actualizar Registros</button>
+    </div>
+
+    <table id="tablaAsistencias">
       <thead>
         <tr>
           <th>Fecha</th>
@@ -117,7 +138,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="6" style="text-align:center;">Ingresa una cédula y presiona "🔍 Buscar" o haz clic en "Ver Todo".</td></tr>
+        <tr><td colspan="6" style="text-align:center;">Presiona "Actualizar Registros" para cargar el historial.</td></tr>
       </tbody>
     </table>
   </div>
@@ -139,6 +160,9 @@
   const SECRET_KEY_DEF = "MiClaveSegura2026";
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoWPJjsXXrRIdzsscoMZtYQ7_0s0nyJ7emLnRG1cnpq-gTl8au6LUNF-seUTpOfyxEGA/exec";
 
+  let datosPersonal = [];
+  let datosAsistencias = [];
+
   window.onload = function() {
     if (!sessionStorage.getItem("session_token")) {
       window.location.href = "login.html";
@@ -159,12 +183,17 @@
     
     document.getElementById(tabId).classList.add('active');
     if (tabId === 'generador') document.getElementById('btnTabGen').classList.add('active');
+    if (tabId === 'personal') {
+      document.getElementById('btnTabEmp').classList.add('active');
+      cargarPersonal();
+    }
     if (tabId === 'consulta') {
       document.getElementById('btnTabCon').classList.add('active');
       cargarAsistencias();
     }
   }
 
+  // --- MÓDULO 1: GENERAR QR ---
   function generarQREmergente() {
     const cedulaInput = document.getElementById("cedula");
     const qrContainer = document.getElementById("qrcodeContainer");
@@ -183,19 +212,14 @@
 
       new QRCode(qrContainer, {
         text: cifrado,
-        width: 200,
-        height: 200,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
+        width: 200, height: 200,
+        colorDark: "#000000", colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
       });
 
       document.getElementById("modalCedulaText").innerText = "Cédula: " + cedula;
       document.getElementById("qrModal").style.display = "flex";
-
-      if (typeof registrarBitacoraQR === "function") {
-        registrarBitacoraQR(cedula);
-      }
+      registrarBitacoraQR(cedula);
     } catch (err) {
       alert("Error al procesar el código QR: " + err.message);
     }
@@ -219,12 +243,60 @@
     }).catch(e => console.log("Bitácora:", e));
   }
 
-  // CONSULTA DE ASISTENCIAS
-  let datosAsistencias = [];
-
-  function cargarAsistencias() {
+  // --- MÓDULO 2: CONSULTA DE PERSONAL ---
+  function cargarPersonal() {
     const tbody = document.querySelector("#tablaPersonal tbody");
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">⏳ Cargando registros...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">⏳ Cargando personal...</td></tr>';
+
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "consultarPersonal", apiKey: API_KEY })
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.status === "success") {
+        datosPersonal = res.data;
+        filtrarPersonal();
+      } else {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Error al obtener la nómina.</td></tr>';
+      }
+    })
+    .catch(() => {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Error de conexión.</td></tr>';
+    });
+  }
+
+  function filtrarPersonal() {
+    const query = document.getElementById("buscarPersonalInput").value.trim().toLowerCase();
+    const filtrados = datosPersonal.filter(p => 
+      (p.cedula && p.cedula.toLowerCase().includes(query)) ||
+      (p.nombre && p.nombre.toLowerCase().includes(query)) ||
+      (p.departamento && p.departamento.toLowerCase().includes(query))
+    );
+
+    const tbody = document.querySelector("#tablaPersonal tbody");
+    tbody.innerHTML = "";
+
+    if (filtrados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No se encontraron empleados con ese criterio.</td></tr>';
+      return;
+    }
+
+    filtrados.forEach(p => {
+      tbody.innerHTML += `<tr>
+        <td><b>${p.cedula}</b></td>
+        <td>${p.nombre}</td>
+        <td>${p.departamento}</td>
+        <td>${p.cargo}</td>
+      </tr>`;
+    });
+  }
+
+  // --- MÓDULO 3: AUDITORÍA DE ASISTENCIAS ---
+  function cargarAsistencias() {
+    const tbody = document.querySelector("#tablaAsistencias tbody");
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">⏳ Cargando registros de asistencia...</td></tr>';
 
     fetch(WEB_APP_URL, {
       method: "POST",
@@ -235,44 +307,33 @@
     .then(res => {
       if (res.status === "success") {
         datosAsistencias = res.data;
-        buscarAsistencias();
+        filtrarAsistencias();
       } else {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Error al obtener datos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Error al obtener asistencias.</td></tr>';
       }
     })
-    .catch(err => {
+    .catch(() => {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Error de conexión.</td></tr>';
     });
   }
 
-  function buscarAsistencias() {
-    const query = document.getElementById("buscarInput").value.trim().toLowerCase();
-    
-    if (!query) {
-      renderTabla(datosAsistencias);
-      return;
-    }
-
+  function filtrarAsistencias() {
+    const query = document.getElementById("buscarAsistenciaInput").value.trim().toLowerCase();
     const filtrados = datosAsistencias.filter(a => 
       (a.cedula && a.cedula.toLowerCase().includes(query)) ||
       (a.nombre && a.nombre.toLowerCase().includes(query)) ||
       (a.fecha && a.fecha.toString().toLowerCase().includes(query))
     );
 
-    renderTabla(filtrados);
-  }
-
-  function renderTabla(lista) {
-    const tbody = document.querySelector("#tablaPersonal tbody");
+    const tbody = document.querySelector("#tablaAsistencias tbody");
     tbody.innerHTML = "";
 
-    if (!lista || lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No se encontraron registros de ingreso para esta búsqueda.</td></tr>';
+    if (filtrados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No se encontraron registros de auditoría para esta búsqueda.</td></tr>';
       return;
     }
 
-    // Ordenar para mostrar las fechas/horas más recientes primero
-    lista.slice().reverse().forEach(a => {
+    filtrados.slice().reverse().forEach(a => {
       tbody.innerHTML += `<tr>
         <td>${a.fecha}</td>
         <td><b>${a.hora}</b></td>
